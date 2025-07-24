@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0F62FE;
+  --secondary: #FF6B00;
+  --bg: #F5F7FA;
+}
+
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 #F1F5F9;
+}
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+.kanban-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 #F1F5F9;
+}
+.kanban-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+.drag-handle {
+  cursor: move;
+}
+.sortable-ghost {
+  opacity: 0.5;
+}
+.task-card {
+  transition: all 0.3s ease;
+}
+.task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

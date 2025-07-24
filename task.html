@@ -1,0 +1,651 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- 页面编号: D-02 /ops/kanboard -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工单管理系统 - 酒店SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        :root {
+            --primary: #0F62FE;
+            --secondary: #FF6B00;
+            --bg: #F5F7FA;
+        }
+        .kanban-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #CBD5E1 #F1F5F9;
+        }
+        .kanban-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .kanban-scroll::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 3px;
+        }
+        .drag-handle {
+            cursor: move;
+        }
+        .sortable-ghost {
+            opacity: 0.5;
+        }
+        .task-card {
+            transition: all 0.3s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-[system-ui]" x-data="kanboardSystem()">
+    <!-- 顶部导航 -->
+    <div class="bg-gray-800 text-white">
+        <div class="px-6 py-2 flex items-center justify-between">
+            <div class="flex items-center space-x-6">
+                <h1 class="text-lg font-semibold">客服工作台</h1>
+                <nav class="flex space-x-4">
+                    <a href="D-01-chatwoot-agent.html" class="px-3 py-1 hover:bg-gray-700 rounded text-sm">会话管理</a>
+                    <a href="D-02-kanboard.html" class="px-3 py-1 bg-gray-700 rounded text-sm">工单系统</a>
+                </nav>
+            </div>
+            <div class="text-sm">
+                客服: 张三 | <a href="#" class="hover:underline">退出</a>
+            </div>
+        </div>
+    </div>
+    
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-800">工单管理系统</h1>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="text-sm text-gray-600">系统正常</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            总工单: <span class="font-semibold text-blue-600" x-text="stats.totalTasks">18</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- 筛选器 -->
+                    <div class="flex items-center space-x-2">
+                        <select 
+                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            x-model="filters.department"
+                        >
+                            <option value="">所有部门</option>
+                            <option value="housekeeping">客房部</option>
+                            <option value="maintenance">维修部</option>
+                            <option value="food">餐饮部</option>
+                            <option value="concierge">礼宾部</option>
+                        </select>
+                        
+                        <select 
+                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            x-model="filters.priority"
+                        >
+                            <option value="">所有优先级</option>
+                            <option value="low">低</option>
+                            <option value="medium">中</option>
+                            <option value="high">高</option>
+                            <option value="urgent">紧急</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <button 
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                        @click="showCreateTaskModal = true"
+                        data-testid="create-task-btn"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <span>新建工单</span>
+                    </button>
+                    
+                    <button 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        @click="showSLAModal = true"
+                        data-testid="sla-btn"
+                    >
+                        SLA监控
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 看板区域 -->
+    <div class="flex-1 p-6">
+        <div class="grid grid-cols-4 gap-6 h-full">
+            <!-- 待处理列 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-800">待处理</h3>
+                        <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full" x-text="getColumnCount('pending')">5</span>
+                    </div>
+                </div>
+                <div class="p-4 kanban-scroll overflow-y-auto" style="height: calc(100vh - 250px);">
+                    <div class="space-y-3">
+                        <template x-for="task in getColumnTasks('pending')" :key="task.id">
+                            <div class="task-card bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer" @click="openTaskDetail(task)">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-800" x-text="task.roomNumber">301</span>
+                                        <span 
+                                            class="px-2 py-1 text-xs rounded-full"
+                                            :class="task.priority === 'urgent' ? 'bg-red-100 text-red-800' : 
+                                                   task.priority === 'high' ? 'bg-orange-100 text-orange-800' : 
+                                                   task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                                   'bg-gray-100 text-gray-800'"
+                                            x-text="task.priority"
+                                        ></span>
+                                    </div>
+                                    <button 
+                                        class="text-gray-400 hover:text-blue-600"
+                                        @click.stop="updateTaskStatus(task, 'in_progress')"
+                                        title="开始处理"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <h4 class="font-medium text-gray-800 mb-2" x-text="task.title">需要加毛巾</h4>
+                                <p class="text-sm text-gray-600 mb-3" x-text="task.description">客人需要额外毛巾</p>
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span x-text="task.department">客房部</span>
+                                    <span x-text="task.createdAt">2小时前</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进行中列 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-800">进行中</h3>
+                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full" x-text="getColumnCount('in_progress')">4</span>
+                    </div>
+                </div>
+                <div class="p-4 kanban-scroll overflow-y-auto" style="height: calc(100vh - 250px);">
+                    <div class="space-y-3">
+                        <template x-for="task in getColumnTasks('in_progress')" :key="task.id">
+                            <div class="task-card bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer" @click="openTaskDetail(task)">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-800" x-text="task.roomNumber">205</span>
+                                        <span 
+                                            class="px-2 py-1 text-xs rounded-full"
+                                            :class="task.priority === 'urgent' ? 'bg-red-100 text-red-800' : 
+                                                   task.priority === 'high' ? 'bg-orange-100 text-orange-800' : 
+                                                   task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                                   'bg-gray-100 text-gray-800'"
+                                            x-text="task.priority"
+                                        ></span>
+                                    </div>
+                                    <button 
+                                        class="text-gray-400 hover:text-green-600"
+                                        @click.stop="updateTaskStatus(task, 'completed')"
+                                        title="完成"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <h4 class="font-medium text-gray-800 mb-2" x-text="task.title">空调维修</h4>
+                                <p class="text-sm text-gray-600 mb-3" x-text="task.description">空调不制冷需要维修</p>
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span x-text="task.department">维修部</span>
+                                    <span x-text="task.createdAt">1小时前</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 待确认列 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-800">待确认</h3>
+                        <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full" x-text="getColumnCount('review')">3</span>
+                    </div>
+                </div>
+                <div class="p-4 kanban-scroll overflow-y-auto" style="height: calc(100vh - 250px);">
+                    <div class="space-y-3">
+                        <template x-for="task in getColumnTasks('review')" :key="task.id">
+                            <div class="task-card bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer" @click="openTaskDetail(task)">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-800" x-text="task.roomNumber">408</span>
+                                        <span 
+                                            class="px-2 py-1 text-xs rounded-full"
+                                            :class="task.priority === 'urgent' ? 'bg-red-100 text-red-800' : 
+                                                   task.priority === 'high' ? 'bg-orange-100 text-orange-800' : 
+                                                   task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                                   'bg-gray-100 text-gray-800'"
+                                            x-text="task.priority"
+                                        ></span>
+                                    </div>
+                                    <button 
+                                        class="text-gray-400 hover:text-green-600"
+                                        @click.stop="updateTaskStatus(task, 'completed')"
+                                        title="确认完成"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <h4 class="font-medium text-gray-800 mb-2" x-text="task.title">客房清洁</h4>
+                                <p class="text-sm text-gray-600 mb-3" x-text="task.description">客房深度清洁完成</p>
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span x-text="task.department">客房部</span>
+                                    <span x-text="task.createdAt">30分钟前</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已完成列 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-gray-800">已完成</h3>
+                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full" x-text="getColumnCount('completed')">6</span>
+                    </div>
+                </div>
+                <div class="p-4 kanban-scroll overflow-y-auto" style="height: calc(100vh - 250px);">
+                    <div class="space-y-3">
+                        <template x-for="task in getColumnTasks('completed')" :key="task.id">
+                            <div class="task-card bg-white border border-gray-200 rounded-lg p-4 shadow-sm cursor-pointer" @click="openTaskDetail(task)">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-800" x-text="task.roomNumber">102</span>
+                                        <span 
+                                            class="px-2 py-1 text-xs rounded-full"
+                                            :class="task.priority === 'urgent' ? 'bg-red-100 text-red-800' : 
+                                                   task.priority === 'high' ? 'bg-orange-100 text-orange-800' : 
+                                                   task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                                   'bg-gray-100 text-gray-800'"
+                                            x-text="task.priority"
+                                        ></span>
+                                    </div>
+                                    <span class="text-green-600">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </span>
+                                </div>
+                                <h4 class="font-medium text-gray-800 mb-2" x-text="task.title">WiFi问题</h4>
+                                <p class="text-sm text-gray-600 mb-3" x-text="task.description">WiFi密码重置完成</p>
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span x-text="task.department">IT部</span>
+                                    <span x-text="task.createdAt">2小时前</span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建工单模态框 -->
+    <div x-show="showCreateTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+            <h3 class="text-lg font-semibold mb-4">创建新工单</h3>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">房间号</label>
+                        <input 
+                            type="text" 
+                            class="w-full p-2 border border-gray-300 rounded-lg"
+                            x-model="newTask.roomNumber"
+                            placeholder="如：301"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">优先级</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg" x-model="newTask.priority">
+                            <option value="low">低</option>
+                            <option value="medium">中</option>
+                            <option value="high">高</option>
+                            <option value="urgent">紧急</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">标题</label>
+                    <input 
+                        type="text" 
+                        class="w-full p-2 border border-gray-300 rounded-lg"
+                        x-model="newTask.title"
+                        placeholder="工单标题"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">部门</label>
+                    <select class="w-full p-2 border border-gray-300 rounded-lg" x-model="newTask.department">
+                        <option value="housekeeping">客房部</option>
+                        <option value="maintenance">维修部</option>
+                        <option value="food">餐饮部</option>
+                        <option value="concierge">礼宾部</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
+                    <textarea 
+                        class="w-full p-2 border border-gray-300 rounded-lg"
+                        rows="3"
+                        x-model="newTask.description"
+                        placeholder="详细描述工单内容"
+                    ></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button 
+                    class="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    @click="showCreateTaskModal = false"
+                >
+                    取消
+                </button>
+                <button 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    @click="createTask"
+                    data-testid="confirm-create-task"
+                >
+                    创建
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLA监控模态框 -->
+    <div x-show="showSLAModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4">
+            <h3 class="text-lg font-semibold mb-4">SLA监控看板</h3>
+            
+            <!-- SLA指标 -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-green-800">按时完成率</h4>
+                    <p class="text-2xl font-bold text-green-600">92%</p>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-yellow-800">平均响应时间</h4>
+                    <p class="text-2xl font-bold text-yellow-600">15分钟</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-red-800">逾期工单</h4>
+                    <p class="text-2xl font-bold text-red-600">3</p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="text-sm font-medium text-blue-800">今日完成</h4>
+                    <p class="text-2xl font-bold text-blue-600">18</p>
+                </div>
+            </div>
+
+            <!-- 逾期工单列表 -->
+            <div class="mb-4">
+                <h4 class="font-medium text-gray-800 mb-2">逾期工单</h4>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-red-800">301房 - 空调维修</span>
+                            <span class="text-sm text-red-600 ml-2">逾期2小时</span>
+                        </div>
+                        <button class="px-3 py-1 text-sm bg-red-600 text-white rounded-lg">催办</button>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-red-800">205房 - 客房清洁</span>
+                            <span class="text-sm text-red-600 ml-2">逾期30分钟</span>
+                        </div>
+                        <button class="px-3 py-1 text-sm bg-red-600 text-white rounded-lg">催办</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button 
+                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                    @click="showSLAModal = false"
+                >
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工单详情模态框 -->
+    <div x-show="showTaskDetail" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+            <h3 class="text-lg font-semibold mb-4">工单详情</h3>
+            <template x-if="selectedTask">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700">房间号</label>
+                            <p class="text-lg font-semibold" x-text="selectedTask.roomNumber"></p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-700">优先级</label>
+                            <p class="text-lg font-semibold" x-text="selectedTask.priority"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">标题</label>
+                        <p class="text-lg font-semibold" x-text="selectedTask.title"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">部门</label>
+                        <p class="text-lg font-semibold" x-text="selectedTask.department"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">描述</label>
+                        <p class="text-gray-800" x-text="selectedTask.description"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">创建时间</label>
+                        <p class="text-gray-800" x-text="selectedTask.createdAt"></p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">当前状态</label>
+                        <p class="text-gray-800" x-text="selectedTask.status"></p>
+                    </div>
+                </div>
+            </template>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button 
+                    class="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    @click="showTaskDetail = false"
+                >
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function kanboardSystem() {
+            return {
+                showCreateTaskModal: false,
+                showSLAModal: false,
+                showTaskDetail: false,
+                selectedTask: null,
+                
+                filters: {
+                    department: '',
+                    priority: ''
+                },
+                
+                stats: {
+                    totalTasks: 18
+                },
+                
+                newTask: {
+                    roomNumber: '',
+                    title: '',
+                    department: 'housekeeping',
+                    priority: 'medium',
+                    description: ''
+                },
+                
+                tasks: [
+                    {
+                        id: 1,
+                        roomNumber: '301',
+                        title: '需要加毛巾',
+                        description: '客人需要额外毛巾',
+                        department: 'housekeeping',
+                        priority: 'medium',
+                        status: 'pending',
+                        createdAt: '2小时前'
+                    },
+                    {
+                        id: 2,
+                        roomNumber: '205',
+                        title: '空调维修',
+                        description: '空调不制冷需要维修',
+                        department: 'maintenance',
+                        priority: 'high',
+                        status: 'in_progress',
+                        createdAt: '1小时前'
+                    },
+                    {
+                        id: 3,
+                        roomNumber: '408',
+                        title: '客房清洁',
+                        description: '客房深度清洁完成',
+                        department: 'housekeeping',
+                        priority: 'low',
+                        status: 'review',
+                        createdAt: '30分钟前'
+                    },
+                    {
+                        id: 4,
+                        roomNumber: '102',
+                        title: 'WiFi问题',
+                        description: 'WiFi密码重置完成',
+                        department: 'maintenance',
+                        priority: 'medium',
+                        status: 'completed',
+                        createdAt: '2小时前'
+                    },
+                    {
+                        id: 5,
+                        roomNumber: '315',
+                        title: '房间设备故障',
+                        description: '电视无法开机',
+                        department: 'maintenance',
+                        priority: 'high',
+                        status: 'pending',
+                        createdAt: '3小时前'
+                    }
+                ],
+                
+                getColumnTasks(status) {
+                    let filtered = this.tasks.filter(task => task.status === status);
+                    
+                    if (this.filters.department) {
+                        filtered = filtered.filter(task => task.department === this.filters.department);
+                    }
+                    
+                    if (this.filters.priority) {
+                        filtered = filtered.filter(task => task.priority === this.filters.priority);
+                    }
+                    
+                    return filtered;
+                },
+                
+                getColumnCount(status) {
+                    return this.getColumnTasks(status).length;
+                },
+                
+                createTask() {
+                    if (!this.newTask.roomNumber || !this.newTask.title) {
+                        alert('请填写房间号和标题');
+                        return;
+                    }
+                    
+                    const task = {
+                        id: Date.now(),
+                        roomNumber: this.newTask.roomNumber,
+                        title: this.newTask.title,
+                        description: this.newTask.description,
+                        department: this.newTask.department,
+                        priority: this.newTask.priority,
+                        status: 'pending',
+                        createdAt: '刚刚'
+                    };
+                    
+                    this.tasks.push(task);
+                    this.stats.totalTasks++;
+                    
+                    // 模拟API调用
+                    console.log('调用Kanboard API创建工单:', task);
+                    
+                    // 重置表单
+                    this.newTask = {
+                        roomNumber: '',
+                        title: '',
+                        department: 'housekeeping',
+                        priority: 'medium',
+                        description: ''
+                    };
+                    
+                    this.showCreateTaskModal = false;
+                    alert('工单创建成功！');
+                },
+                
+                updateTaskStatus(task, newStatus) {
+                    task.status = newStatus;
+                    
+                    // 模拟API调用
+                    console.log('调用Kanboard API更新工单状态:', {
+                        taskId: task.id,
+                        newStatus: newStatus
+                    });
+                    
+                    // 模拟触发Node-RED流程
+                    console.log('触发Node-RED流程:', {
+                        event: 'task_status_updated',
+                        data: { taskId: task.id, status: newStatus }
+                    });
+                },
+                
+                openTaskDetail(task) {
+                    this.selectedTask = task;
+                    this.showTaskDetail = true;
+                    
+                    // 模拟API调用获取详情
+                    console.log('调用Kanboard API获取工单详情:', task.id);
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

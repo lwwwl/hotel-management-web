@@ -5,10 +5,21 @@ import {
   TaskDetail, 
   TaskCreateRequest, 
   TaskUpdateRequest, 
-  TaskChangeStatusRequest 
+  TaskChangeStatusRequest,
+  TaskListRequest,
+  TaskListColumnBO
 } from './types';
 
 export const taskApi = {
+  /**
+   * 获取任务列表
+   * @param request 任务列表请求参数，包含过滤条件和分页信息
+   */
+  getTaskList: async (request: TaskListRequest) => {
+    const response = await api.post<ApiResponse<TaskListColumnBO[]>>('/api/task/list', request);
+    return response.data;
+  },
+
   /**
    * 获取任务看板列表
    * @param department 部门筛选

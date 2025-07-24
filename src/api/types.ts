@@ -13,6 +13,42 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// Task List API types
+export interface TaskListRequest {
+  requireTaskColumnList: TaskColumnRequest[];
+  departmentId?: number | null;
+  priority?: number | null;
+}
+
+export interface TaskColumnRequest {
+  taskStatus: string;
+  lastTaskId?: number | null;
+  lastTaskCreateTime?: string | null;
+}
+
+export interface TaskListColumnBO {
+  tasks: TaskListItemBO[];
+  taskCount: number;
+  taskStatus: number;
+  taskStatusDisplayName: string;
+}
+
+export interface TaskListItemBO {
+  taskId: number;
+  title: string;
+  description: string;
+  roomId: number;
+  roomName: string;
+  guestId: number;
+  guestName: string;
+  deptId: number;
+  deptName: string;
+  taskStatus: number;
+  taskStatusDisplayName: string;
+  createTime: string;
+  updateTime: string;
+}
+
 // Task API types
 export interface TaskColumn {
   status: string;

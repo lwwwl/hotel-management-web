@@ -11,7 +11,7 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) {
-  const { getColumnTasks, getColumnCount, updateTaskStatus } = useTasks(filters);
+  const { getColumnTasks, getColumnCount, updateTaskStatus, loading, hasMore, loadMore } = useTasks(filters);
   
   return (
     <div className="flex-1 p-6">
@@ -26,6 +26,9 @@ export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) 
           onTaskClick={onTaskClick}
           onStatusChange={(task, newStatus) => updateTaskStatus(task, newStatus)}
           nextStatus="in_progress"
+          loading={loading}
+          hasMore={hasMore['pending']}
+          onLoadMore={() => loadMore('pending')}
         />
         
         {/* 进行中列 */}
@@ -37,7 +40,10 @@ export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) 
           badgeColor="blue"
           onTaskClick={onTaskClick}
           onStatusChange={(task, newStatus) => updateTaskStatus(task, newStatus)}
-          nextStatus="completed"
+          nextStatus="review"
+          loading={loading}
+          hasMore={hasMore['in_progress']}
+          onLoadMore={() => loadMore('in_progress')}
         />
         
         {/* 待确认列 */}
@@ -50,6 +56,9 @@ export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) 
           onTaskClick={onTaskClick}
           onStatusChange={(task, newStatus) => updateTaskStatus(task, newStatus)}
           nextStatus="completed"
+          loading={loading}
+          hasMore={hasMore['review']}
+          onLoadMore={() => loadMore('review')}
         />
         
         {/* 已完成列 */}
@@ -61,6 +70,9 @@ export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) 
           badgeColor="green"
           onTaskClick={onTaskClick}
           isCompleted
+          loading={loading}
+          hasMore={hasMore['completed']}
+          onLoadMore={() => loadMore('completed')}
         />
       </div>
     </div>

@@ -10,7 +10,7 @@ export const chatApi = {
    */
   getChatList: async (verified: boolean, page = 1, size = 10) => {
     const params = { verified, page, size };
-    const response = await api.get<PaginatedResponse<ChatConversation>>('/api/chat/list', { params });
+    const response = await api.get<PaginatedResponse<ChatConversation>>('/chat/list', { params });
     return response.data;
   },
 
@@ -22,7 +22,7 @@ export const chatApi = {
       activeChats: number;
       resolvedToday: number;
       averageResponseTime: string;
-    }>>('/api/chat/stats');
+    }>>('/chat/stats');
     return response.data;
   },
 
@@ -31,7 +31,7 @@ export const chatApi = {
    * @param id 聊天ID
    */
   getChatDetail: async (id: number) => {
-    const response = await api.get<ApiResponse<ChatConversation>>(`/api/chat/detail/${id}`);
+    const response = await api.get<ApiResponse<ChatConversation>>(`/chat/detail/${id}`);
     return response.data;
   },
 
@@ -41,7 +41,7 @@ export const chatApi = {
    * @param content 消息内容
    */
   sendMessage: async (chatId: number, content: string) => {
-    const response = await api.post<ApiResponse<ChatMessage>>(`/api/chat/send/${chatId}`, { content });
+    const response = await api.post<ApiResponse<ChatMessage>>(`/chat/send/${chatId}`, { content });
     return response.data;
   },
 
@@ -50,7 +50,7 @@ export const chatApi = {
    * @param chatId 聊天ID
    */
   verifyChat: async (chatId: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/chat/verify/${chatId}`);
+    const response = await api.put<ApiResponse<boolean>>(`/chat/verify/${chatId}`);
     return response.data;
   },
 
@@ -59,7 +59,7 @@ export const chatApi = {
    * @param chatId 聊天ID
    */
   rejectChat: async (chatId: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/chat/reject/${chatId}`);
+    const response = await api.put<ApiResponse<boolean>>(`/chat/reject/${chatId}`);
     return response.data;
   },
 
@@ -68,7 +68,7 @@ export const chatApi = {
    * @param chatId 聊天ID
    */
   resolveChat: async (chatId: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/chat/resolve/${chatId}`);
+    const response = await api.put<ApiResponse<boolean>>(`/chat/resolve/${chatId}`);
     return response.data;
   },
 
@@ -80,7 +80,7 @@ export const chatApi = {
       id: number;
       text: string;
       content: string;
-    }>>>('/api/chat/quick-replies');
+    }>>>('/chat/quick-replies');
     return response.data;
   }
 }; 

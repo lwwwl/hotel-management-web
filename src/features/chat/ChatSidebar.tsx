@@ -12,9 +12,8 @@ interface ChatSidebarProps {
 
 export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeQueue, setActiveQueue] = useState<'verified' | 'unverified'>('unverified');
   
-  const { chats, stats, getQueueCount, verifyChat } = useChats();
+  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue } = useChats();
 
   const handleQuickVerify = (chat: Chat) => {
     if (!chat || chat.verified) return;

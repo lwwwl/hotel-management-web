@@ -1,6 +1,8 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = 'http://111.223.37.162:8080';
+const API_BASE_URL = 'http://111.223.37.162:7788';
+
+// http://127.0.0.1:8080
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +13,11 @@ const api = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config: AxiosRequestConfig): AxiosRequestConfig => {
+  (config) => {
+    // 为所有请求添加X-User-Id头
+    config.headers = config.headers || {};
+    config.headers['X-User-Id'] = '1';
+    
     // You can add auth token here if needed
     // const token = localStorage.getItem('token');
     // if (token) {
@@ -19,7 +25,7 @@ api.interceptors.request.use(
     // }
     return config;
   },
-  (error: AxiosError): Promise<AxiosError> => {
+  (error) => {
     return Promise.reject(error);
   }
 );

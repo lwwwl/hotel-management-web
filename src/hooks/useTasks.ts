@@ -13,7 +13,7 @@ export function useTasks(filters: { department: string; priority: string }) {
   });
   
   // 存储每个列的分页信息
-  const [pagination, setPagination] = useState<Record<string, { lastId: number | null; lastCreateTime: string | null }>>({
+  const [pagination, setPagination] = useState<Record<string, { lastId: number | null; lastCreateTime: number | null }>>({
     'pending': { lastId: null, lastCreateTime: null },
     'in_progress': { lastId: null, lastCreateTime: null },
     'review': { lastId: null, lastCreateTime: null },
@@ -38,57 +38,49 @@ export function useTasks(filters: { department: string; priority: string }) {
 
   // 将后端返回的数据转换为前端使用的Task类型
   const convertToTask = (item: TaskListItemBO): Task => ({
-    id: item.taskId,
-    roomNumber: item.roomName,
+    taskId: item.taskId,
+    roomName: item.roomName,
     title: item.title,
     description: item.description,
-    department: item.deptName,
-    priority: convertPriority(item.taskStatus),
-    status: getStatusName(item.taskStatus),
-    createdAt: new Date(item.createTime).toLocaleString()
+    deptName: item.deptName,
+    priority: item.priority as 'low' | 'medium' | 'high' | 'urgent',
+    priorityDisplayName: item.priorityDisplayName,
+    status: item.taskStatus as 'pending' | 'in_progress' | 'review' | 'completed',
+    statusDisplayName: item.taskStatusDisplayName,
+    createdAt: item.createTime,
+    roomId: item.roomId,
+    deptId: item.deptId,
+    guestId: item.guestId,
+    guestName: item.guestName
   });
 
-  // 根据优先级状态码转换为前端使用的priority类型
-  const convertPriority = (priorityCode: number): 'low' | 'medium' | 'high' | 'urgent' => {
-    switch (priorityCode) {
-      case 1: return 'low';
-      case 2: return 'medium';
-      case 3: return 'high';
-      case 4: return 'urgent';
-      default: return 'medium';
-    }
-  };
-
   // 根据状态码获取状态名称
-  const getStatusName = (statusCode: number): 'pending' | 'in_progress' | 'review' | 'completed' => {
-    switch (statusCode) {
-      case 1: return 'pending';
-      case 2: return 'in_progress';
-      case 3: return 'review';
-      case 4: return 'completed';
-      default: return 'pending';
-    }
+  const getStatusName = (statusCode: string): 'pending' | 'in_progress' | 'review' | 'completed' => {
+    return statusCode as 'pending' | 'in_progress' | 'review' | 'completed';
   };
 
   // 获取任务列表
   const fetchTasks = useCallback(async (statusList: string[] = ['pending', 'in_progress', 'review', 'completed']) => {
     setLoading(true);
     try {
+      // 获取当前的分页状态
+      const currentPagination = pagination;
+      
       const columnRequests: TaskColumnRequest[] = statusList.map(status => ({
         taskStatus: status,
-        lastTaskId: pagination[status].lastId,
-        lastTaskCreateTime: pagination[status].lastCreateTime
+        lastTaskId: currentPagination[status].lastId,
+        lastTaskCreateTime: currentPagination[status].lastCreateTime
       }));
 
       const request: TaskListRequest = {
         requireTaskColumnList: columnRequests,
         departmentId: filters.department ? Number(filters.department) : null,
-        priority: filters.priority ? Number(filters.priority) : null
+        priority: filters.priority || null
       };
 
       const response = await taskApi.getTaskList(request);
 
-      if (response.code === 200) {
+      if (response.statusCode === 200) {
         const newTasks = { ...tasks };
         const newPagination = { ...pagination };
         const newHasMore = { ...hasMore };
@@ -101,7 +93,7 @@ export function useTasks(filters: { department: string; priority: string }) {
           newColumnCounts[statusName] = column.taskCount;
           
           // 如果是第一次加载或者刷新，则覆盖原数据
-          if (!pagination[statusName].lastId) {
+          if (!currentPagination[statusName].lastId) {
             newTasks[statusName] = column.tasks.map(convertToTask);
           } else {
             // 否则追加数据
@@ -131,26 +123,120 @@ export function useTasks(filters: { department: string; priority: string }) {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination, tasks, columnCounts]);
+  }, [filters, pagination, tasks, hasMore, columnCounts]);
 
   // 首次加载和筛选条件变化时获取所有列的数据
   useEffect(() => {
     // 重置分页信息
-    setPagination({
+    const resetPagination: Record<string, { lastId: number | null; lastCreateTime: number | null }> = {
       'pending': { lastId: null, lastCreateTime: null },
       'in_progress': { lastId: null, lastCreateTime: null },
       'review': { lastId: null, lastCreateTime: null },
       'completed': { lastId: null, lastCreateTime: null }
-    });
+    };
     
-    fetchTasks();
+    setPagination(resetPagination);
   }, [filters]);
+
+  // 监听分页变化，当分页被重置时获取数据
+  useEffect(() => {
+    // 检查是否所有分页都被重置（用于判断是否是刷新操作）
+    const isAllReset = Object.values(pagination).every(p => p.lastId === null && p.lastCreateTime === null);
+    
+    if (isAllReset) {
+      // 使用重置后的分页信息获取数据
+      const fetchWithResetPagination = async () => {
+        setLoading(true);
+        try {
+          const columnRequests: TaskColumnRequest[] = ['pending', 'in_progress', 'review', 'completed'].map(status => ({
+            taskStatus: status,
+            lastTaskId: null, // 重置为null
+            lastTaskCreateTime: null // 重置为null
+          }));
+
+          const request: TaskListRequest = {
+            requireTaskColumnList: columnRequests,
+            departmentId: filters.department ? Number(filters.department) : null,
+            priority: filters.priority || null
+          };
+
+          const response = await taskApi.getTaskList(request);
+
+          if (response.statusCode === 200) {
+            const newTasks: Record<string, Task[]> = {
+              'pending': [],
+              'in_progress': [],
+              'review': [],
+              'completed': []
+            };
+            const newPagination = { ...pagination };
+            const newHasMore: Record<string, boolean> = {
+              'pending': true,
+              'in_progress': true,
+              'review': true,
+              'completed': true
+            };
+            const newColumnCounts: Record<string, number> = {
+              'pending': 0,
+              'in_progress': 0,
+              'review': 0,
+              'completed': 0
+            };
+
+            response.data.forEach((column: TaskListColumnBO) => {
+              const statusName = getStatusName(column.taskStatus);
+              
+              // 更新总任务数
+              newColumnCounts[statusName] = column.taskCount;
+              
+              // 覆盖原数据（因为是筛选后的第一页）
+              newTasks[statusName] = column.tasks.map(convertToTask);
+
+              // 更新分页信息
+              if (column.tasks.length > 0) {
+                const lastTask = column.tasks[column.tasks.length - 1];
+                newPagination[statusName] = {
+                  lastId: lastTask.taskId,
+                  lastCreateTime: lastTask.createTime
+                };
+                newHasMore[statusName] = column.tasks.length === 20;
+              } else {
+                newHasMore[statusName] = false;
+              }
+            });
+
+            setTasks(newTasks);
+            setPagination(newPagination);
+            setHasMore(newHasMore);
+            setColumnCounts(newColumnCounts);
+          }
+        } catch (error) {
+          console.error('获取任务列表失败:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchWithResetPagination();
+    }
+  }, [pagination, filters]);
 
   // 加载更多任务
   const loadMore = async (status: string) => {
     if (!hasMore[status] || loading) return;
     await fetchTasks([status]);
   };
+
+  // 手动刷新所有任务列表 - 只重置分页，不立即获取数据
+  const refreshTasks = useCallback(() => {
+    // 只重置分页信息，让 useEffect 监听分页变化后自动获取数据
+    setPagination({
+      'pending': { lastId: null, lastCreateTime: null },
+      'in_progress': { lastId: null, lastCreateTime: null },
+      'review': { lastId: null, lastCreateTime: null },
+      'completed': { lastId: null, lastCreateTime: null }
+    });
+  }, []);
 
   const getColumnTasks = (status: Task['status']) => {
     return tasks[status] || [];
@@ -165,7 +251,7 @@ export function useTasks(filters: { department: string; priority: string }) {
     try {
       // 调用更改状态API
       await taskApi.changeTaskStatus({
-        id: task.id,
+        id: task.taskId,
         status: newStatus
       });
 
@@ -174,7 +260,7 @@ export function useTasks(filters: { department: string; priority: string }) {
       const updatedCounts = { ...columnCounts };
       
       // 从原状态中移除
-      updatedTasks[task.status] = updatedTasks[task.status].filter(t => t.id !== task.id);
+      updatedTasks[task.status] = updatedTasks[task.status].filter(t => t.taskId !== task.taskId);
       // 更新计数
       updatedCounts[task.status] = Math.max(0, updatedCounts[task.status] - 1);
       
@@ -196,16 +282,22 @@ export function useTasks(filters: { department: string; priority: string }) {
   const createNewTask = async (newTask: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
     try {
       const response = await taskApi.createTask({
-        roomNumber: newTask.roomNumber,
+        roomId: newTask.roomId,
         title: newTask.title,
         description: newTask.description,
-        department: newTask.department,
+        deptId: newTask.deptId,
         priority: newTask.priority
       });
 
-      if (response.code === 200) {
-        // 重新获取待处理列表
-        fetchTasks(['pending']);
+      if (response.statusCode === 200) {
+        // 重置分页信息，让 useEffect 自动获取最新数据
+        setPagination({
+          'pending': { lastId: null, lastCreateTime: null },
+          'in_progress': { lastId: null, lastCreateTime: null },
+          'review': { lastId: null, lastCreateTime: null },
+          'completed': { lastId: null, lastCreateTime: null }
+        });
+        
         return true;
       }
       return false;
@@ -223,6 +315,7 @@ export function useTasks(filters: { department: string; priority: string }) {
     getColumnCount, 
     updateTaskStatus,
     createNewTask,
-    loadMore
+    loadMore,
+    refreshTasks
   };
 } 

@@ -44,7 +44,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 font-[system-ui]" x-data="kanboardSystem()">
+<body class="bg-gray-50 font-[system-ui]" x-data="kanboardSystem()" x-init="init()">
     <!-- 顶部导航 -->
     <div class="bg-gray-800 text-white">
         <div class="px-6 py-2 flex items-center justify-between">
@@ -85,10 +85,9 @@
                             x-model="filters.department"
                         >
                             <option value="">所有部门</option>
-                            <option value="housekeeping">客房部</option>
-                            <option value="maintenance">维修部</option>
-                            <option value="food">餐饮部</option>
-                            <option value="concierge">礼宾部</option>
+                            <template x-for="dept in departments" :key="dept.id">
+                                <option :value="dept.id" x-text="dept.name"></option>
+                            </template>
                         </select>
                         
                         <select 

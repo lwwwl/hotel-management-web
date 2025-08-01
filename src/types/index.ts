@@ -21,14 +21,20 @@ export interface Chat {
 }
 
 export interface Task {
-  id: number;
-  roomNumber: string;
+  taskId: number;
+  roomId: number;
+  roomName: string;
   title: string;
   description: string;
-  department: string;
+  deptId: number;
+  deptName: string;
+  guestId: number;
+  guestName: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  priorityDisplayName: string; // 优先级显示名称
   status: 'pending' | 'in_progress' | 'review' | 'completed';
-  createdAt: string;
+  statusDisplayName: string; // 状态显示名称
+  createdAt: number; // 使用毫秒时间戳
 }
 
 export interface TaskForm {

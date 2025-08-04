@@ -1,17 +1,26 @@
 import { Task } from '../../types';
 import KanbanColumn from './KanbanColumn';
 import { useTasks } from '../../hooks/useTasks';
+import { useEffect } from 'react';
 
 interface KanbanBoardProps {
   filters: {
     department: string;
     priority: string;
   };
+  refreshFlag?: number; // 可选的刷新标识，变化时重新获取数据
   onTaskClick: (task: Task) => void;
 }
 
-export default function KanbanBoard({ filters, onTaskClick }: KanbanBoardProps) {
-  const { getColumnTasks, getColumnCount, updateTaskStatus, loading, hasMore, loadMore } = useTasks(filters);
+export default function KanbanBoard({ filters, refreshFlag = 0, onTaskClick }: KanbanBoardProps) {
+  const { getColumnTasks, getColumnCount, updateTaskStatus, loading, hasMore, loadMore, refreshTasks } = useTasks(filters);
+  
+  // 监听refreshFlag变化，触发刷新
+  useEffect(() => {
+    if (refreshFlag > 0) {
+      refreshTasks();
+    }
+  }, [refreshFlag, refreshTasks]);
   
   return (
     <div className="flex-1 p-6">

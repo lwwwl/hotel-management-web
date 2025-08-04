@@ -30,7 +30,7 @@ export const userApi = {
    * 获取当前用户信息
    */
   getCurrentUser: async () => {
-    const response = await api.get<ApiResponse<UserInfo>>('/api/user/current');
+    const response = await api.get<ApiResponse<UserInfo>>('/user/current');
     return response.data;
   },
 
@@ -40,7 +40,7 @@ export const userApi = {
    */
   getUserList: async (departmentId?: number, page = 1, size = 20) => {
     const params = { departmentId, page, size };
-    const response = await api.get<PaginatedResponse<UserInfo>>('/api/user/list', { params });
+    const response = await api.get<PaginatedResponse<UserInfo>>('/user/list', { params });
     return response.data;
   },
 
@@ -48,7 +48,7 @@ export const userApi = {
    * 获取部门列表
    */
   getDepartments: async () => {
-    const response = await api.get<ApiResponse<DepartmentInfo[]>>('/api/department/list');
+    const response = await api.get<ApiResponse<DepartmentInfo[]>>('/department/list');
     return response.data;
   },
 
@@ -58,7 +58,7 @@ export const userApi = {
    * @param password 密码
    */
   login: async (username: string, password: string) => {
-    const response = await api.post<ApiResponse<{token: string}>>('/api/auth/login', { username, password });
+    const response = await api.post<ApiResponse<{token: string}>>('/auth/login', { username, password });
     return response.data;
   },
 
@@ -66,7 +66,7 @@ export const userApi = {
    * 退出登录
    */
   logout: async () => {
-    const response = await api.post<ApiResponse<boolean>>('/api/auth/logout');
+    const response = await api.post<ApiResponse<boolean>>('/auth/logout');
     return response.data;
   }
 }; 

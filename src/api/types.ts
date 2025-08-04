@@ -1,35 +1,39 @@
 export interface ApiResponse<T> {
-  code: number;
+  statusCode: number; // Changed from code to statusCode to match API response
   message: string;
   data: T;
+  timestamp: number;
+  error: null | string;
 }
 
 export interface PaginatedResponse<T> {
-  code: number;
+  statusCode: number; // Changed from code to statusCode to match API response
   message: string;
   data: {
     total: number;
     records: T[];
   };
+  timestamp: number;
+  error: null | string;
 }
 
 // Task List API types
 export interface TaskListRequest {
   requireTaskColumnList: TaskColumnRequest[];
   departmentId?: number | null;
-  priority?: number | null;
+  priority?: string | null;
 }
 
 export interface TaskColumnRequest {
   taskStatus: string;
   lastTaskId?: number | null;
-  lastTaskCreateTime?: string | null;
+  lastTaskCreateTime?: number | null;
 }
 
 export interface TaskListColumnBO {
   tasks: TaskListItemBO[];
   taskCount: number;
-  taskStatus: number;
+  taskStatus: string; // Changed from number to string to match API response
   taskStatusDisplayName: string;
 }
 
@@ -43,10 +47,12 @@ export interface TaskListItemBO {
   guestName: string;
   deptId: number;
   deptName: string;
-  taskStatus: number;
+  taskStatus: string; // Changed from number to string to match API response
   taskStatusDisplayName: string;
-  createTime: string;
-  updateTime: string;
+  priority: string; // Added missing priority field
+  priorityDisplayName: string; // Added missing priorityDisplayName field
+  createTime: number; // 改为毫秒时间戳
+  updateTime: number; // 改为毫秒时间戳
 }
 
 // Task API types
@@ -58,24 +64,36 @@ export interface TaskColumn {
 
 export interface TaskListItem {
   id: number;
-  roomNumber: string;
   title: string;
   description: string;
-  department: string;
   priority: string;
+  priorityDisplayName: string;
   status: string;
-  createdAt: string;
+  statusDisplayName: string;
+  roomId: number;
+  roomName: string;
+  guestId: number;
+  guestName: string;
+  deptId: number;
+  deptName: string;
+  createdAt: number;
 }
 
 export interface TaskDetail {
   id: number;
-  roomNumber: string;
+  roomId: number;
+  roomName: string;
+  guestId: number;
+  guestName: string;
+  deptId: number;
+  deptName: string;
   title: string;
   description: string;
-  department: string;
   priority: string;
+  priorityDisplayName: string; // 优先级显示名称
   status: string;
-  createdAt: string;
+  statusDisplayName: string; // 状态显示名称
+  createdAt: number; // 改为毫秒时间戳
   creator: string;
   executor?: string;
   operateRecords: TaskOperateRecord[];
@@ -86,16 +104,20 @@ export interface TaskOperateRecord {
   taskId: number;
   operateType: string;
   operateUser: string;
-  operateTime: string;
+  operateTime: number; // 改为毫秒时间戳
   operateContent: string;
 }
 
 // Task request types
+export interface TaskDetailRequest {
+  taskId: number;
+}
+
 export interface TaskCreateRequest {
-  roomNumber: string;
+  roomId: number;
   title: string;
   description: string;
-  department: string;
+  deptId: number;
   priority: string;
 }
 

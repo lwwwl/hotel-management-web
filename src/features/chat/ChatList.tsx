@@ -32,7 +32,7 @@ export default function ChatList({
               <div className="flex justify-between items-start">
                 <div>
                   <div className="font-medium">
-                    房间 {chat.roomNumber} - {chat.guestName}
+                    {chat.guestName}
                   </div>
                   <div className="text-sm text-gray-600">{chat.lastMessage}</div>
                   <div className="text-xs text-gray-400">{chat.lastTime}</div>
@@ -61,7 +61,7 @@ export default function ChatList({
                   onClick={() => onSelectChat(chat)}
                 >
                   <div className="font-medium">
-                    房间 {chat.roomNumber} - {chat.guestName}
+                    {chat.guestName}
                   </div>
                   <div className="text-sm text-gray-600">{chat.lastMessage}</div>
                   <div className="text-xs text-gray-400">{chat.lastTime}</div>
@@ -75,7 +75,7 @@ export default function ChatList({
                     快速验证
                   </button>
                 </div>
-              </div>
+              z
             </div>
           ))}
         </div>

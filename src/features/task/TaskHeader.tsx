@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { deptApi, DeptSelectListItem } from '../../api';
+
 interface TaskHeaderProps {
   filters: {
     department: string;
@@ -14,6 +17,24 @@ export default function TaskHeader({
   onCreateTask,
   onOpenSLAMonitor
 }: TaskHeaderProps) {
+  const [departments, setDepartments] = useState<DeptSelectListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // 获取部门列表
+  useEffect(() => {
+    setLoading(true);
+    deptApi.getDeptSelectList()
+      .then(deptList => {
+        setDepartments(deptList);
+      })
+      .catch(err => {
+        console.error('获取部门列表失败:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
   // 更新过滤器
   const updateFilter = (field: string, value: string) => {
     onFilterChange({
@@ -46,12 +67,13 @@ export default function TaskHeader({
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 value={filters.department}
                 onChange={(e) => updateFilter('department', e.target.value)}
+                disabled={loading}
               >
-                <option value="">所有部门</option>
-                <option value="housekeeping">客房部</option>
-                <option value="maintenance">维修部</option>
-                <option value="food">餐饮部</option>
-                <option value="concierge">礼宾部</option>
+                {departments.map(dept => (
+                  <option key={dept.deptId} value={dept.deptId}>
+                    {dept.deptName}
+                  </option>
+                ))}
               </select>
               
               <select 

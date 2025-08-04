@@ -18,6 +18,15 @@ export default function TaskPage() {
     priority: ''
   });
   
+  // 刷新工单列表的标识，通过改变这个值触发KanbanBoard的重新加载
+  const [refreshFlag, setRefreshFlag] = useState(0);
+  
+  // 创建工单成功回调
+  const handleTaskCreated = () => {
+    // 触发刷新
+    setRefreshFlag(prev => prev + 1);
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       {/* 工单页面头部 */}
@@ -31,6 +40,7 @@ export default function TaskPage() {
       {/* 看板区域 */}
       <KanbanBoard 
         filters={filters}
+        refreshFlag={refreshFlag}
         onTaskClick={(task) => {
           setSelectedTask(task);
           setShowTaskDetail(true);
@@ -39,7 +49,10 @@ export default function TaskPage() {
       
       {/* 模态框组件 */}
       {showCreateTaskModal && (
-        <CreateTaskModal onClose={() => setShowCreateTaskModal(false)} />
+        <CreateTaskModal 
+          onClose={() => setShowCreateTaskModal(false)} 
+          onSuccess={handleTaskCreated}
+        />
       )}
       
       {showSLAModal && (

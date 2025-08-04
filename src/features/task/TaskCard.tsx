@@ -87,11 +87,11 @@ export default function TaskCard({
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-gray-800">{task.roomNumber}</span>
+          <span className="text-sm font-medium text-gray-800">{task.roomId}</span>
           <span 
             className={`px-2 py-1 text-xs rounded-full ${getPriorityStyle(task.priority)}`}
           >
-            {task.priority}
+            {task.priorityDisplayName}
           </span>
         </div>
         {getActionButton()}

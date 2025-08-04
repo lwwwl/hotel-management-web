@@ -7,7 +7,8 @@ import {
   TaskUpdateRequest, 
   TaskChangeStatusRequest,
   TaskListRequest,
-  TaskListColumnBO
+  TaskListColumnBO,
+  TaskDetailRequest
 } from './types';
 
 export const taskApi = {
@@ -16,7 +17,7 @@ export const taskApi = {
    * @param request 任务列表请求参数，包含过滤条件和分页信息
    */
   getTaskList: async (request: TaskListRequest) => {
-    const response = await api.post<ApiResponse<TaskListColumnBO[]>>('/api/task/list', request);
+    const response = await api.post<ApiResponse<TaskListColumnBO[]>>('/task/list', request);
     return response.data;
   },
 
@@ -27,16 +28,17 @@ export const taskApi = {
    */
   getTaskColumns: async (department?: string, priority?: string) => {
     const params = { department, priority };
-    const response = await api.get<ApiResponse<TaskColumn[]>>('/api/task/columns', { params });
+    const response = await api.get<ApiResponse<TaskColumn[]>>('/task/columns', { params });
     return response.data;
   },
 
   /**
    * 获取任务详情
-   * @param id 任务ID
+   * @param taskId 任务ID
    */
-  getTaskDetail: async (id: number) => {
-    const response = await api.get<ApiResponse<TaskDetail>>(`/api/task/detail/${id}`);
+  getTaskDetail: async (taskId: number) => {
+    const request: TaskDetailRequest = { taskId };
+    const response = await api.post<ApiResponse<TaskDetail>>('/task/detail', request);
     return response.data;
   },
 
@@ -45,7 +47,7 @@ export const taskApi = {
    * @param task 任务信息
    */
   createTask: async (task: TaskCreateRequest) => {
-    const response = await api.post<ApiResponse<number>>('/api/task/create', task);
+    const response = await api.post<ApiResponse<number>>('/task/create', task);
     return response.data;
   },
 
@@ -54,7 +56,7 @@ export const taskApi = {
    * @param task 任务信息
    */
   updateTask: async (task: TaskUpdateRequest) => {
-    const response = await api.put<ApiResponse<boolean>>('/api/task/update', task);
+    const response = await api.put<ApiResponse<boolean>>('/task/update', task);
     return response.data;
   },
 
@@ -63,7 +65,7 @@ export const taskApi = {
    * @param id 任务ID
    */
   deleteTask: async (id: number) => {
-    const response = await api.delete<ApiResponse<boolean>>(`/api/task/delete/${id}`);
+    const response = await api.delete<ApiResponse<boolean>>(`/task/delete/${id}`);
     return response.data;
   },
 
@@ -72,7 +74,7 @@ export const taskApi = {
    * @param taskStatus 任务状态信息
    */
   changeTaskStatus: async (taskStatus: TaskChangeStatusRequest) => {
-    const response = await api.put<ApiResponse<boolean>>('/api/task/status', taskStatus);
+    const response = await api.put<ApiResponse<boolean>>('/task/status', taskStatus);
     return response.data;
   },
 
@@ -81,7 +83,7 @@ export const taskApi = {
    * @param id 任务ID
    */
   claimTask: async (id: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/task/claim/${id}`);
+    const response = await api.put<ApiResponse<boolean>>(`/task/claim/${id}`);
     return response.data;
   },
 
@@ -91,7 +93,7 @@ export const taskApi = {
    * @param userId 新执行人ID
    */
   transferTask: async (id: number, userId: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/task/transfer/${id}`, { userId });
+    const response = await api.put<ApiResponse<boolean>>(`/task/transfer/${id}`, { userId });
     return response.data;
   },
 
@@ -101,7 +103,7 @@ export const taskApi = {
    * @param userId 执行人ID
    */
   addExecutor: async (id: number, userId: number) => {
-    const response = await api.put<ApiResponse<boolean>>(`/api/task/executor/add/${id}`, { userId });
+    const response = await api.put<ApiResponse<boolean>>(`/task/executor/add/${id}`, { userId });
     return response.data;
   },
 
@@ -110,7 +112,7 @@ export const taskApi = {
    * @param id 任务ID
    */
   sendReminder: async (id: number) => {
-    const response = await api.post<ApiResponse<boolean>>(`/api/task/reminder/${id}`);
+    const response = await api.post<ApiResponse<boolean>>(`/task/reminder/${id}`);
     return response.data;
   }
 }; 

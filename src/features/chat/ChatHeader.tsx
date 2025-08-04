@@ -23,7 +23,7 @@ export default function ChatHeader({
             <div className="flex items-center space-x-4">
               <div>
                 <h3 className="font-medium text-gray-800">
-                  房间 {chat.roomNumber} - {chat.guestName}
+                  客人 {chat.guestName}
                 </h3>
                 <p className="text-sm text-gray-600">
                   入住时间: {chat.checkInDate}

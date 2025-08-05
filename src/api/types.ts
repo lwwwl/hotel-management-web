@@ -114,11 +114,15 @@ export interface TaskDetailRequest {
 }
 
 export interface TaskCreateRequest {
-  roomId: number;
+  roomId: number | null;
   title: string;
   description: string;
   deptId: number;
   priority: string;
+  guestId: number | null;
+  // 截止时间，时间戳
+  deadlineTime: number | null;
+  conversationId: number | null;
 }
 
 export interface TaskUpdateRequest {

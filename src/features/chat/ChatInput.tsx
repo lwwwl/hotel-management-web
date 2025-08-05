@@ -5,13 +5,15 @@ interface ChatInputProps {
   onChange: (value: string) => void;
   onSend: () => void;
   onQuickReply: (content: string) => void;
+  disabled?: boolean;
 }
 
 export default function ChatInput({ 
   value, 
   onChange, 
   onSend,
-  onQuickReply 
+  onQuickReply,
+  disabled = false
 }: ChatInputProps) {
   // 快速回复选项
   const quickReplies = [
@@ -23,7 +25,7 @@ export default function ChatInput({
 
   // 处理键盘事件
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !disabled) {
       e.preventDefault();
       onSend();
     }
@@ -34,21 +36,29 @@ export default function ChatInput({
       <div className="flex items-end space-x-4">
         <div className="flex-1">
           <textarea 
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+              disabled ? 'bg-gray-100 cursor-not-allowed' : ''
+            }`}
             placeholder="输入消息..."
             rows={2}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            disabled={disabled}
             data-testid="message-input"
           />
         </div>
         <button 
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className={`px-6 py-3 rounded-lg flex items-center space-x-2 ${
+            disabled 
+              ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
           onClick={onSend}
+          disabled={disabled}
           data-testid="send-btn"
         >
-          <span>发送</span>
+          <span>{disabled ? '发送中...' : '发送'}</span>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
           </svg>
@@ -59,8 +69,13 @@ export default function ChatInput({
         {quickReplies.map(reply => (
           <button 
             key={reply.id}
-            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
+            className={`px-3 py-1 text-sm rounded-full ${
+              disabled 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
             onClick={() => onQuickReply(reply.content)}
+            disabled={disabled}
           >
             {reply.text}
           </button>

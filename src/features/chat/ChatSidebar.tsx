@@ -13,7 +13,7 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue } = useChats();
+  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue, selectChat } = useChats();
 
   const handleQuickVerify = (chat: Chat) => {
     if (!chat || chat.verified) return;
@@ -22,6 +22,11 @@ export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarP
       const updatedChat = verifyChat(chat);
       alert(`${updatedChat.roomNumber} 房间客人验证成功！`);
     }
+  };
+  
+  const handleSelectChat = (chat: Chat) => {
+    onSelectChat(chat);
+    selectChat(chat);
   };
   
   // 过滤聊天列表
@@ -76,7 +81,7 @@ export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarP
         chats={filteredChats}
         activeQueue={activeQueue}
         selectedChat={selectedChat}
-        onSelectChat={onSelectChat}
+        onSelectChat={handleSelectChat}
         onQuickVerify={handleQuickVerify}
       />
     </div>

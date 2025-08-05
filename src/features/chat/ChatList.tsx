@@ -75,7 +75,7 @@ export default function ChatList({
                     快速验证
                   </button>
                 </div>
-              z
+              </div>
             </div>
           ))}
         </div>

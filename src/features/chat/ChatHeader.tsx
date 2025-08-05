@@ -55,7 +55,6 @@ export default function ChatHeader({
           <button 
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
             onClick={onOpenCreateTask}
-            disabled={!chat}
             data-testid="create-task-btn"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

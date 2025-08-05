@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Chat } from '../../types';
 import { useChats } from '../../hooks/useChats';
 import ChatHeader from './ChatHeader';
@@ -18,11 +18,18 @@ export default function ChatMain({
   onOpenCreateTask
 }: ChatMainProps) {
   const [newMessage, setNewMessage] = useState('');
-  const { sendMessage, resolveChat } = useChats();
+  const { sendMessage, resolveChat, messages, messagesLoading, hasMoreMessages, loadMoreMessages, selectChat, sendingMessage } = useChats();
+  
+  // 当选择会话时，加载消息
+  useEffect(() => {
+    if (selectedChat) {
+      selectChat(selectedChat);
+    }
+  }, [selectedChat, selectChat]);
   
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedChat) return;
-    sendMessage(selectedChat, newMessage);
+    if (!newMessage.trim() || !selectedChat || sendingMessage) return;
+    sendMessage(selectedChat.id, newMessage);
     setNewMessage('');
   };
 
@@ -64,12 +71,18 @@ export default function ChatMain({
       <div className="flex-1 bg-gray-50 p-4">
         {selectedChat ? (
           <div className="h-full flex flex-col">
-            <ChatMessages messages={selectedChat.messages} />
+            <ChatMessages 
+              messages={messages} 
+              loading={messagesLoading}
+              hasMore={hasMoreMessages}
+              onLoadMore={loadMoreMessages}
+            />
             <ChatInput 
               value={newMessage}
               onChange={setNewMessage}
               onSend={handleSendMessage}
               onQuickReply={handleUseQuickReply}
+              disabled={sendingMessage}
             />
           </div>
         ) : (

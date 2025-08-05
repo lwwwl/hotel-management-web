@@ -1,20 +1,54 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Message } from '../../types';
 
 interface ChatMessagesProps {
   messages: Message[];
+  loading?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-export default function ChatMessages({ messages }: ChatMessagesProps) {
+export default function ChatMessages({ messages, loading = false, hasMore = false, onLoadMore }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 滚动加载更多
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current || !hasMore || loading) return;
+    
+    const { scrollTop } = messagesContainerRef.current;
+    // 当滚动到顶部附近时加载更多
+    if (scrollTop < 100) {
+      onLoadMore?.();
+    }
+  }, [hasMore, loading, onLoadMore]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
+
   return (
-    <div className="flex-1 bg-white rounded-lg shadow-sm overflow-y-auto chat-scroll p-4" id="messages-container">
+    <div 
+      ref={messagesContainerRef}
+      className="flex-1 bg-white rounded-lg shadow-sm overflow-y-auto chat-scroll p-4" 
+      id="messages-container"
+    >
+      {/* 加载更多提示 */}
+      {hasMore && (
+        <div className="text-center py-2 text-gray-500 text-sm">
+          {loading ? '加载中...' : '上拉加载更多'}
+        </div>
+      )}
+      
       {messages.map(message => (
         <div 
           key={message.id}

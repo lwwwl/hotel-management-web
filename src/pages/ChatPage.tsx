@@ -39,7 +39,7 @@ export default function ChatPage() {
         />
       )}
       
-      {showCreateTaskModal && selectedChat && (
+      {showCreateTaskModal && (
         <CreateTaskModal 
           chat={selectedChat} 
           onClose={() => setShowCreateTaskModal(false)} 

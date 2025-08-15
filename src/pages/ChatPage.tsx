@@ -15,8 +15,8 @@ export default function ChatPage() {
   const [verifyingChat, setVerifyingChat] = useState<Chat | null>(null);
   
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1 flex">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0 flex">
         {/* 左侧会话列表 */}
         <ChatSidebar 
           selectedChat={selectedChat} 

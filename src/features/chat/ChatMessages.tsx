@@ -39,7 +39,7 @@ export default function ChatMessages({ messages, loading = false, hasMore = fals
   return (
     <div 
       ref={messagesContainerRef}
-      className="flex-1 bg-white rounded-lg shadow-sm overflow-y-auto chat-scroll p-4" 
+      className="h-[60vh] bg-white rounded-lg shadow-sm overflow-y-auto chat-scroll p-4" 
       id="messages-container"
     >
       {/* 加载更多提示 */}

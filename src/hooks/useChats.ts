@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Chat, Message } from '../types';
+import { Chat, Message, NotificationMessage, WebSocketMessageData } from '../types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import api from '../api/axiosConfig';
+import { useWebSocketContext } from '../contexts/WebSocketContext';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
@@ -22,6 +23,57 @@ export function useChats() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // 获取WebSocket上下文，仅用于消息注册
+  const { registerMessageHandler } = useWebSocketContext();
+
+  // 处理WebSocket消息
+  const handleWebSocketMessage = useCallback((notification: NotificationMessage) => {
+    console.log('useChats收到WebSocket消息:', notification);
+    
+    if (notification.type === 'message_created' && notification.data) {
+      const newMessage: WebSocketMessageData = notification.data;
+      const conversationIdNum = Number(notification.conversationId);
+      
+      // 更新当前会话的消息列表
+      if (currentConversationId === conversationIdNum) {
+        setMessages(prevMessages => {
+          // 检查消息是否已存在
+          const exists = prevMessages.some(msg => msg.id === newMessage.id);
+          if (!exists) {
+            const formattedMessage: Message = {
+              id: newMessage.id,
+              sender: newMessage.message_type === 0 ? 'guest' : 'agent',
+              content: newMessage.content,
+              timestamp: dayjs.unix(newMessage.created_at).format('HH:mm'),
+            };
+            return [...prevMessages, formattedMessage];
+          }
+          return prevMessages;
+        });
+      }
+      
+      // 更新会话列表中的最后一条消息
+      setChats(prevChats => {
+        return prevChats.map(chat => {
+          if (chat.id === conversationIdNum) {
+            return {
+              ...chat,
+              lastMessage: newMessage.content,
+              lastTime: dayjs.unix(newMessage.created_at).fromNow(),
+            };
+          }
+          return chat;
+        });
+      });
+    }
+  }, [currentConversationId]);
+
+  // 注册WebSocket消息处理器（组件装载期间有效）
+  useEffect(() => {
+    const unregister = registerMessageHandler(handleWebSocketMessage);
+    return unregister;
+  }, [registerMessageHandler, handleWebSocketMessage]);
 
   // 获取会话列表
   const fetchChats = useCallback(async (label: 'verified' | 'unverified') => {
@@ -157,27 +209,20 @@ export function useChats() {
         campaign_id: null,
         template_params: {},
       });
-      
+
       const messageData = res.data;
-      
-      // 将新消息添加到当前消息列表
-      const newMessage: Message = {
+      if (!messageData) return null;
+
+      const message: Message = {
         id: messageData.id,
         sender: 'agent',
         content: messageData.content,
         timestamp: formatMessageTime(messageData.created_at),
       };
+
+      setMessages(prev => [...prev, message]);
       
-      setMessages(prev => [...prev, newMessage]);
-      
-      // 更新会话列表中的最后消息
-      setChats(prev => prev.map(chat => 
-        chat.id === conversationId 
-          ? { ...chat, lastMessage: content.trim(), lastTime: '刚刚' }
-          : chat
-      ));
-      
-      return newMessage;
+      return message;
     } catch (error) {
       console.error('发送消息失败:', error);
       return null;

@@ -5,7 +5,7 @@ const Layout = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-[system-ui]">
+    <div className="min-h-screen bg-gray-50 font-[system-ui] flex flex-col">
       {/* Top Navigation */}
       <div className="bg-gray-800 text-white">
         <div className="px-6 py-2 flex items-center justify-between">
@@ -33,7 +33,9 @@ const Layout = () => {
       </div>
 
       {/* Page Content */}
-      <Outlet />
+      <div className="flex-1 min-h-0">
+        <Outlet />
+      </div>
     </div>
   );
 };

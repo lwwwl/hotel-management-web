@@ -4,6 +4,8 @@ export interface Message {
   content: string;
   timestamp: string;
   translation?: string;
+  translationLoading?: boolean;
+  translationError?: boolean;
 }
 
 // WebSocket消息类型（与后端API返回的消息结构匹配）
@@ -90,4 +92,37 @@ export interface QuickReply {
   id: number;
   text: string;
   content: string;
+}
+
+// 翻译相关类型
+export type LanguageCode = 'zh_CN' | 'en_US' | 'ja_JP';
+
+export interface LanguageOption {
+  code: LanguageCode;
+  name: string;
+  flag: string;
+}
+
+export interface TranslateRequest {
+  conversationId: number;
+  messageIdList: number[];
+  language: LanguageCode;
+}
+
+export interface MessageTranslate {
+  id: number;
+  conversationId: number;
+  messageId: number;
+  language: string;
+  content: string;
+  createTime: string;
+  updateTime: string;
+}
+
+export interface TranslateResponse {
+  timestamp: number;
+  statusCode: number;
+  message: string;
+  data: MessageTranslate[];
+  error?: string;
 } 

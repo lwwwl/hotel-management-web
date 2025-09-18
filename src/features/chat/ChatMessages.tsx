@@ -61,9 +61,25 @@ export default function ChatMessages({ messages, loading = false, hasMore = fals
           >
             <div>{message.content}</div>
             <div className="text-xs mt-1 opacity-75">{message.timestamp}</div>
-            {message.translation && (
-              <div className="text-xs mt-1 opacity-75 italic">
-                <span className="text-yellow-300">翻译:</span> <span>{message.translation}</span>
+            
+            {/* 翻译结果区域 */}
+            {(message.translation || message.translationLoading || message.translationError) && (
+              <div className="mt-2 pt-2 border-t border-opacity-20 border-current">
+                <div className="flex items-center space-x-2 text-xs">
+                  <span className="font-medium opacity-75">翻译:</span>
+                  {message.translationLoading && (
+                    <div className="flex items-center space-x-1">
+                      <div className="animate-spin w-3 h-3 border border-current border-t-transparent rounded-full"></div>
+                      <span className="opacity-75">翻译中...</span>
+                    </div>
+                  )}
+                  {message.translationError && (
+                    <span className="opacity-75 text-red-300">翻译失败</span>
+                  )}
+                  {message.translation && !message.translationLoading && !message.translationError && (
+                    <span className="opacity-75 italic">{message.translation}</span>
+                  )}
+                </div>
               </div>
             )}
           </div>

@@ -5,6 +5,7 @@ import ChatHeader from './ChatHeader';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import EmptyChatState from './EmptyChatState';
+import TranslateSwitch from './TranslateSwitch';
 
 interface ChatMainProps {
   selectedChat: Chat | null;
@@ -18,7 +19,20 @@ export default function ChatMain({
   onOpenCreateTask
 }: ChatMainProps) {
   const [newMessage, setNewMessage] = useState('');
-  const { sendMessage, resolveChat, messages, messagesLoading, hasMoreMessages, loadMoreMessages, selectChat, sendingMessage } = useChats();
+  const { 
+    sendMessage, 
+    resolveChat, 
+    messages, 
+    messagesLoading, 
+    hasMoreMessages, 
+    loadMoreMessages, 
+    selectChat, 
+    sendingMessage,
+    translateEnabled,
+    selectedLanguage,
+    toggleTranslate,
+    changeTranslateLanguage
+  } = useChats();
   
   // 当选择会话时，加载消息
   useEffect(() => {
@@ -71,6 +85,17 @@ export default function ChatMain({
       <div className="flex-1 min-h-0 bg-gray-50 p-4">
         {selectedChat ? (
           <div className="h-full min-h-0 flex flex-col">
+            {/* 翻译开关 */}
+            <div className="mb-4">
+              <TranslateSwitch
+                enabled={translateEnabled}
+                selectedLanguage={selectedLanguage}
+                onToggle={toggleTranslate}
+                onLanguageChange={changeTranslateLanguage}
+                disabled={!selectedChat}
+              />
+            </div>
+            
             <ChatMessages 
               messages={messages} 
               loading={messagesLoading}

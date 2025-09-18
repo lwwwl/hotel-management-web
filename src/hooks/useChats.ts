@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Chat, Message, NotificationMessage, WebSocketMessageData } from '../types';
+import { Chat, Message, NotificationMessage, WebSocketMessageData, LanguageCode } from '../types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import api from '../api/axiosConfig';
 import { useWebSocketContext } from '../contexts/WebSocketContext';
+import { TranslateService } from '../services/translateService';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
@@ -23,6 +24,11 @@ export function useChats() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
+  
+  // 翻译相关状态
+  const [translateEnabled, setTranslateEnabled] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('zh_CN');
+  const [translatingMessages, setTranslatingMessages] = useState<Set<number>>(new Set());
 
   // 获取WebSocket上下文，仅用于消息注册
   const { registerMessageHandler } = useWebSocketContext();
@@ -47,6 +53,12 @@ export function useChats() {
               content: newMessage.content,
               timestamp: dayjs.unix(newMessage.created_at).format('HH:mm'),
             };
+            
+            // 如果是新消息且翻译功能开启，自动翻译
+            if (translateEnabled) {
+              translateNewMessage(newMessage.id);
+            }
+            
             return [...prevMessages, formattedMessage];
           }
           return prevMessages;
@@ -303,6 +315,112 @@ export function useChats() {
     return updatedChat;
   };
 
+  // 翻译相关函数
+  const translateMessages = useCallback(async (messageIds: number[]) => {
+    if (!currentConversationId || !translateEnabled || messageIds.length === 0) {
+      return;
+    }
+
+    // 标记消息为翻译中
+    setMessages(prevMessages => 
+      prevMessages.map(msg => 
+        messageIds.includes(msg.id) 
+          ? { ...msg, translationLoading: true, translationError: false }
+          : msg
+      )
+    );
+
+    // 添加到翻译中集合
+    setTranslatingMessages(prev => new Set([...prev, ...messageIds]));
+
+    try {
+      const translations = await TranslateService.translateMessages(
+        currentConversationId,
+        messageIds,
+        selectedLanguage
+      );
+
+      // 更新消息翻译结果
+      setMessages(prevMessages => 
+        prevMessages.map(msg => {
+          if (messageIds.includes(msg.id)) {
+            const translation = translations[msg.id];
+            return {
+              ...msg,
+              translation: translation || undefined,
+              translationLoading: false,
+              translationError: !translation
+            };
+          }
+          return msg;
+        })
+      );
+    } catch (error) {
+      console.error('翻译失败:', error);
+      
+      // 标记翻译失败
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          messageIds.includes(msg.id) 
+            ? { ...msg, translationLoading: false, translationError: true }
+            : msg
+        )
+      );
+    } finally {
+      // 从翻译中集合移除
+      setTranslatingMessages(prev => {
+        const newSet = new Set(prev);
+        messageIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    }
+  }, [currentConversationId, translateEnabled, selectedLanguage]);
+
+  const translateNewMessage = useCallback(async (messageId: number) => {
+    if (!translateEnabled) return;
+    await translateMessages([messageId]);
+  }, [translateMessages, translateEnabled]);
+
+  const toggleTranslate = useCallback((enabled: boolean) => {
+    setTranslateEnabled(enabled);
+    
+    if (enabled && currentConversationId) {
+      // 开启翻译时，翻译当前所有消息
+      setMessages(prevMessages => {
+        const messageIds = prevMessages.map(msg => msg.id);
+        if (messageIds.length > 0) {
+          translateMessages(messageIds);
+        }
+        return prevMessages;
+      });
+    } else {
+      // 关闭翻译时，清除所有翻译状态
+      setMessages(prevMessages => 
+        prevMessages.map(msg => ({
+          ...msg,
+          translation: undefined,
+          translationLoading: false,
+          translationError: false
+        }))
+      );
+    }
+  }, [currentConversationId, translateMessages]);
+
+  const changeTranslateLanguage = useCallback((language: LanguageCode) => {
+    setSelectedLanguage(language);
+    
+    if (translateEnabled && currentConversationId) {
+      // 语言改变时，重新翻译当前所有消息
+      setMessages(prevMessages => {
+        const messageIds = prevMessages.map(msg => msg.id);
+        if (messageIds.length > 0) {
+          translateMessages(messageIds);
+        }
+        return prevMessages;
+      });
+    }
+  }, [translateEnabled, currentConversationId, translateMessages]);
+
   return {
     chats,
     stats,
@@ -320,5 +438,12 @@ export function useChats() {
     loadMoreMessages,
     selectChat,
     sendingMessage,
+    // 翻译相关
+    translateEnabled,
+    selectedLanguage,
+    toggleTranslate,
+    changeTranslateLanguage,
+    translateMessages,
+    translateNewMessage,
   };
 } 

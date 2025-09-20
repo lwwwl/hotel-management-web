@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Message } from '../../types';
 
 interface ChatMessagesProps {
@@ -6,16 +6,36 @@ interface ChatMessagesProps {
   loading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  isNewMessage?: boolean;
 }
 
-export default function ChatMessages({ messages, loading = false, hasMore = false, onLoadMore }: ChatMessagesProps) {
+export default function ChatMessages({
+  messages,
+  loading = false,
+  hasMore = false,
+  onLoadMore,
+  isNewMessage = false
+}: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null);
 
-  // 自动滚动到底部
+  // 自动滚动到底部 - 仅当有新消息时
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (isNewMessage) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isNewMessage]);
+
+  // 分页加载时保持滚动位置
+  useEffect(() => {
+    if (!loading && prevScrollHeight !== null && messagesContainerRef.current) {
+      const currentScrollHeight = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTop = currentScrollHeight - prevScrollHeight;
+      setPrevScrollHeight(null);
+    }
+  }, [loading, prevScrollHeight]);
+
 
   // 滚动加载更多
   const handleScroll = useCallback(() => {
@@ -24,6 +44,10 @@ export default function ChatMessages({ messages, loading = false, hasMore = fals
     const { scrollTop } = messagesContainerRef.current;
     // 当滚动到顶部附近时加载更多
     if (scrollTop < 100) {
+      // 记录当前滚动高度，以便加载后恢复位置
+      if (messagesContainerRef.current) {
+        setPrevScrollHeight(messagesContainerRef.current.scrollHeight);
+      }
       onLoadMore?.();
     }
   }, [hasMore, loading, onLoadMore]);

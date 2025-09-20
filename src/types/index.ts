@@ -103,26 +103,26 @@ export interface LanguageOption {
   flag: string;
 }
 
+export interface MessageContentInfo {
+  messageId: number;
+  content: string;
+}
+
 export interface TranslateRequest {
   conversationId: number;
-  messageIdList: number[];
+  messages: MessageContentInfo[];
   language: LanguageCode;
 }
 
-export interface MessageTranslate {
-  id: number;
-  conversationId: number;
+export interface TranslateResultInfo {
   messageId: number;
-  language: string;
-  content: string;
-  createTime: string;
-  updateTime: string;
+  result: string;
 }
 
 export interface TranslateResponse {
   timestamp: number;
   statusCode: number;
   message: string;
-  data: MessageTranslate[];
+  data: TranslateResultInfo[];
   error?: string;
 } 

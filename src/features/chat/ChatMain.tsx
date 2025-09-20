@@ -28,6 +28,8 @@ export default function ChatMain({
     loadMoreMessages, 
     selectChat, 
     sendingMessage,
+    isNewMessage,
+    translationLoading,
     translateEnabled,
     selectedLanguage,
     toggleTranslate,
@@ -92,7 +94,7 @@ export default function ChatMain({
                 selectedLanguage={selectedLanguage}
                 onToggle={toggleTranslate}
                 onLanguageChange={changeTranslateLanguage}
-                disabled={!selectedChat}
+                disabled={!selectedChat || translationLoading}
               />
             </div>
             
@@ -101,6 +103,7 @@ export default function ChatMain({
               loading={messagesLoading}
               hasMore={hasMoreMessages}
               onLoadMore={loadMoreMessages}
+              isNewMessage={isNewMessage}
             />
             <ChatInput 
               value={newMessage}

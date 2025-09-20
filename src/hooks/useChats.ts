@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Chat, Message, NotificationMessage, WebSocketMessageData, LanguageCode } from '../types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -24,41 +24,134 @@ export function useChats() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [isNewMessage, setIsNewMessage] = useState(false);
   
   // 翻译相关状态
   const [translateEnabled, setTranslateEnabled] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('zh_CN');
   const [translatingMessages, setTranslatingMessages] = useState<Set<number>>(new Set());
+  const [translationLoading, setTranslationLoading] = useState(false);
 
   // 获取WebSocket上下文，仅用于消息注册
   const { registerMessageHandler } = useWebSocketContext();
+
+  const translateMessages = useCallback(async (messageIds: number[], language: LanguageCode) => {
+    if (!currentConversationId || !translateEnabled || messageIds.length === 0) {
+      return;
+    }
+
+    // 从当前消息列表中筛选出需要翻译的消息
+    const messagesToTranslate = messages.filter(msg => messageIds.includes(msg.id));
+    if (messagesToTranslate.length === 0) {
+      return;
+    }
+
+    setTranslationLoading(true);
+    // 标记消息为翻译中
+    setMessages(prevMessages =>
+      prevMessages.map(msg =>
+        messageIds.includes(msg.id)
+          ? { ...msg, translationLoading: true, translationError: false }
+          : msg
+      )
+    );
+
+    // 添加到翻译中集合
+    setTranslatingMessages(prev => new Set([...prev, ...messageIds]));
+
+    try {
+      const translations = await TranslateService.translateMessages(
+        currentConversationId,
+        messagesToTranslate,
+        language
+      );
+
+      // 更新消息翻译结果
+      setMessages(prevMessages =>
+        prevMessages.map(msg => {
+          if (messageIds.includes(msg.id)) {
+            const translation = translations[msg.id];
+            return {
+              ...msg,
+              translation: translation || undefined,
+              translationLoading: false,
+              translationError: !translation
+            };
+          }
+          return msg;
+        })
+      );
+    } catch (error) {
+      console.error('翻译失败:', error);
+
+      // 标记翻译失败
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          messageIds.includes(msg.id)
+            ? { ...msg, translationLoading: false, translationError: true }
+            : msg
+        )
+      );
+    } finally {
+      // 从翻译中集合移除
+      setTranslatingMessages(prev => {
+        const newSet = new Set(prev);
+        messageIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    }
+    setTranslationLoading(false);
+  }, [currentConversationId, translateEnabled, messages]);
+
+  const translateNewMessage = useCallback(async (newMessage: Message) => {
+    if (!translateEnabled || !currentConversationId) return;
+
+    // 1. 将这条特定消息标记为加载中
+    setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, translationLoading: true, translationError: false } : m));
+
+    try {
+      // 2. 为这条新消息调用翻译服务
+      const translations = await TranslateService.translateMessages(currentConversationId, [newMessage], selectedLanguage);
+      const translation = translations[newMessage.id];
+
+      // 3. 用翻译结果更新消息
+      setMessages(prev => prev.map(m => m.id === newMessage.id ? {
+        ...m,
+        translation: translation || undefined,
+        translationLoading: false,
+        translationError: !translation,
+      } : m));
+
+    } catch (error) {
+      console.error('新消息翻译失败:', error);
+      // 4. 将消息更新为错误状态
+      setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, translationLoading: false, translationError: true } : m));
+    }
+  }, [translateEnabled, currentConversationId, selectedLanguage]);
+
 
   // 处理WebSocket消息
   const handleWebSocketMessage = useCallback((notification: NotificationMessage) => {
     console.log('useChats收到WebSocket消息:', notification);
     
     if (notification.type === 'message_created' && notification.data) {
-      const newMessage: WebSocketMessageData = notification.data;
+      const newMessageData: WebSocketMessageData = notification.data;
       const conversationIdNum = Number(notification.conversationId);
       
       // 更新当前会话的消息列表
       if (currentConversationId === conversationIdNum) {
         setMessages(prevMessages => {
           // 检查消息是否已存在
-          const exists = prevMessages.some(msg => msg.id === newMessage.id);
+          const exists = prevMessages.some(msg => msg.id === newMessageData.id);
           if (!exists) {
             const formattedMessage: Message = {
-              id: newMessage.id,
-              sender: newMessage.message_type === 0 ? 'guest' : 'agent',
-              content: newMessage.content,
-              timestamp: dayjs.unix(newMessage.created_at).format('HH:mm'),
+              id: newMessageData.id,
+              sender: newMessageData.message_type === 0 ? 'guest' : 'agent',
+              content: newMessageData.content,
+              timestamp: dayjs.unix(newMessageData.created_at).format('HH:mm'),
             };
             
-            // 如果是新消息且翻译功能开启，自动翻译
-            if (translateEnabled) {
-              translateNewMessage(newMessage.id);
-            }
-            
+            setIsNewMessage(true);
             return [...prevMessages, formattedMessage];
           }
           return prevMessages;
@@ -71,8 +164,8 @@ export function useChats() {
           if (chat.id === conversationIdNum) {
             return {
               ...chat,
-              lastMessage: newMessage.content,
-              lastTime: dayjs.unix(newMessage.created_at).fromNow(),
+              lastMessage: newMessageData.content,
+              lastTime: dayjs.unix(newMessageData.created_at).fromNow(),
             };
           }
           return chat;
@@ -192,6 +285,7 @@ export function useChats() {
         setMessages(filteredMessages);
       } else {
         // 如果是加载更多，添加到现有消息前面
+        setIsNewMessage(false);
         setMessages(prev => [...filteredMessages, ...prev]);
       }
       
@@ -232,7 +326,14 @@ export function useChats() {
         timestamp: formatMessageTime(messageData.created_at),
       };
 
+      setIsNewMessage(true);
       setMessages(prev => [...prev, message]);
+
+      // 如果翻译功能已开启，则翻译这条新消息
+      if (translateEnabled) {
+        // 使用 setTimeout 确保状态更新已处理完毕再进行翻译
+        setTimeout(() => translateNewMessage(message), 0);
+      }
       
       return message;
     } catch (error) {
@@ -241,7 +342,7 @@ export function useChats() {
     } finally {
       setSendingMessage(false);
     }
-  }, []);
+  }, [translateEnabled, translateNewMessage]);
 
   // 格式化消息时间
   const formatMessageTime = (timestamp: number): string => {
@@ -316,110 +417,54 @@ export function useChats() {
   };
 
   // 翻译相关函数
-  const translateMessages = useCallback(async (messageIds: number[]) => {
-    if (!currentConversationId || !translateEnabled || messageIds.length === 0) {
-      return;
-    }
-
-    // 标记消息为翻译中
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
-        messageIds.includes(msg.id) 
-          ? { ...msg, translationLoading: true, translationError: false }
-          : msg
-      )
-    );
-
-    // 添加到翻译中集合
-    setTranslatingMessages(prev => new Set([...prev, ...messageIds]));
-
-    try {
-      const translations = await TranslateService.translateMessages(
-        currentConversationId,
-        messageIds,
-        selectedLanguage
-      );
-
-      // 更新消息翻译结果
-      setMessages(prevMessages => 
-        prevMessages.map(msg => {
-          if (messageIds.includes(msg.id)) {
-            const translation = translations[msg.id];
-            return {
-              ...msg,
-              translation: translation || undefined,
-              translationLoading: false,
-              translationError: !translation
-            };
-          }
-          return msg;
-        })
-      );
-    } catch (error) {
-      console.error('翻译失败:', error);
-      
-      // 标记翻译失败
-      setMessages(prevMessages => 
-        prevMessages.map(msg => 
-          messageIds.includes(msg.id) 
-            ? { ...msg, translationLoading: false, translationError: true }
-            : msg
-        )
-      );
-    } finally {
-      // 从翻译中集合移除
-      setTranslatingMessages(prev => {
-        const newSet = new Set(prev);
-        messageIds.forEach(id => newSet.delete(id));
-        return newSet;
-      });
-    }
-  }, [currentConversationId, translateEnabled, selectedLanguage]);
-
-  const translateNewMessage = useCallback(async (messageId: number) => {
-    if (!translateEnabled) return;
-    await translateMessages([messageId]);
-  }, [translateMessages, translateEnabled]);
 
   const toggleTranslate = useCallback((enabled: boolean) => {
     setTranslateEnabled(enabled);
-    
-    if (enabled && currentConversationId) {
-      // 开启翻译时，翻译当前所有消息
-      setMessages(prevMessages => {
-        const messageIds = prevMessages.map(msg => msg.id);
-        if (messageIds.length > 0) {
-          translateMessages(messageIds);
-        }
-        return prevMessages;
-      });
-    } else {
-      // 关闭翻译时，清除所有翻译状态
-      setMessages(prevMessages => 
+
+    // 如果是关闭翻译，则立即清除已有的翻译结果
+    if (!enabled) {
+      setMessages(prevMessages =>
         prevMessages.map(msg => ({
           ...msg,
           translation: undefined,
           translationLoading: false,
-          translationError: false
+          translationError: false,
         }))
       );
     }
-  }, [currentConversationId, translateMessages]);
+  }, []);
 
   const changeTranslateLanguage = useCallback((language: LanguageCode) => {
     setSelectedLanguage(language);
-    
-    if (translateEnabled && currentConversationId) {
-      // 语言改变时，重新翻译当前所有消息
-      setMessages(prevMessages => {
-        const messageIds = prevMessages.map(msg => msg.id);
-        if (messageIds.length > 0) {
-          translateMessages(messageIds);
-        }
-        return prevMessages;
-      });
-    }
-  }, [translateEnabled, currentConversationId, translateMessages]);
+  }, []);
+
+  // 这个 effect 是批量翻译的唯一触发源
+  // 当开关被打开时，或者当语言/会话在开关为打开状态时发生变化，它就会运行
+  const prevLangRef = useRef<LanguageCode>();
+  useEffect(() => {
+      const hasLanguageChanged = prevLangRef.current !== undefined && prevLangRef.current !== selectedLanguage;
+
+      if (translateEnabled && currentConversationId) {
+          let messagesToTranslate;
+          if (hasLanguageChanged) {
+              // 如果语言已更改，则重新翻译所有消息
+              messagesToTranslate = messages;
+          } else {
+              // 否则，仅翻译尚无翻译的消息
+              messagesToTranslate = messages.filter(msg => !msg.translation && !msg.translationLoading);
+          }
+
+          if (messagesToTranslate.length > 0) {
+              const messageIds = messagesToTranslate.map(msg => msg.id);
+              translateMessages(messageIds, selectedLanguage);
+          }
+      }
+      // 在 effect 执行后更新 ref
+      prevLangRef.current = selectedLanguage;
+
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translateEnabled, selectedLanguage, currentConversationId, messages]);
+
 
   return {
     chats,
@@ -438,6 +483,8 @@ export function useChats() {
     loadMoreMessages,
     selectChat,
     sendingMessage,
+    isNewMessage,
+    translationLoading,
     // 翻译相关
     translateEnabled,
     selectedLanguage,

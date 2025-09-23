@@ -62,22 +62,26 @@ export default function ChatHeader({
             </svg>
             <span>生成工单</span>
           </button>
-          <button 
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-            onClick={onTransfer}
-            disabled={!chat}
-            data-testid="transfer-btn"
-          >
-            转接
-          </button>
-          <button 
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-            onClick={onResolve}
-            disabled={!chat}
-            data-testid="resolve-btn"
-          >
-            解决
-          </button>
+          
+          {/* 只有未解决的会话才显示转接和解决按钮 */}
+          {chat && chat.statusText !== '已解决' && (
+            <>
+              <button 
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                onClick={onTransfer}
+                data-testid="transfer-btn"
+              >
+                转接
+              </button>
+              <button 
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                onClick={onResolve}
+                data-testid="resolve-btn"
+              >
+                解决
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

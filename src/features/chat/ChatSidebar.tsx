@@ -13,7 +13,7 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue, selectChat } = useChats();
+  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue, selectChat, queueCounts } = useChats();
 
   const handleQuickVerify = (chat: Chat) => {
     if (!chat || chat.verified) return;
@@ -31,7 +31,6 @@ export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarP
   
   // 过滤聊天列表
   const filteredChats = chats
-    .filter(chat => activeQueue === 'verified' ? chat.verified : !chat.verified)
     .filter(chat => 
       searchQuery ? (
         chat.roomNumber.includes(searchQuery) || 
@@ -69,8 +68,8 @@ export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarP
       <ChatQueueTabs 
         activeQueue={activeQueue} 
         onChangeQueue={setActiveQueue}
-        verifiedCount={getQueueCount('verified')}
-        unverifiedCount={getQueueCount('unverified')}
+        mineCount={getQueueCount('mine')}
+        unassignedCount={getQueueCount('unassigned')}
       />
 
       {/* 统计信息 */}

@@ -58,11 +58,10 @@ export default function ChatMain({
     }
   };
   
-  const handleResolveChat = () => {
+  const handleResolveChat = async () => {
     if (!selectedChat) return;
     if (window.confirm('确定要解决这个会话吗？')) {
-      resolveChat(selectedChat);
-      alert('会话已标记为解决');
+      await resolveChat(selectedChat);
     }
   };
 

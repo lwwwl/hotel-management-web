@@ -13,12 +13,19 @@ dayjs.locale('zh-cn');
 const CONVERSATION_API_URL = '/chat-user/conversation-list';
 const MESSAGE_API_URL = '/chat-user/message-list';
 const SEND_MESSAGE_API_URL = '/chat-user/message-create';
+const CONVERSATION_COUNT_API_URL = '/chat-user/conversation/count';
+const TOGGLE_STATUS_API_URL = '/chat-user/conversation/toggle-status';
+
+// 配置常量
+const DEFAULT_INBOX_ID = 2; // 默认的收件箱ID，后续可根据实际需要调整
 
 export function useChats() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [stats, setStats] = useState({ activeChats: 0, resolvedToday: 0 });
+  const [queueCounts, setQueueCounts] = useState({ mineCount: 0, unassignedCount: 0 });
+  const [activeChatsCount, setActiveChatsCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [activeQueue, setActiveQueue] = useState<'verified' | 'unverified'>('unverified');
+  const [activeQueue, setActiveQueue] = useState<'mine' | 'unassigned'>('mine');
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
@@ -27,8 +34,14 @@ export function useChats() {
   const [isNewMessage, setIsNewMessage] = useState(false);
   
   // 翻译相关状态
-  const [translateEnabled, setTranslateEnabled] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('zh_CN');
+  const [translateEnabled, setTranslateEnabled] = useState(() => {
+    const saved = localStorage.getItem('chat_translate_enabled');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>(() => {
+    const saved = localStorage.getItem('chat_translate_language');
+    return (saved as LanguageCode) || 'zh_CN';
+  });
   const [translatingMessages, setTranslatingMessages] = useState<Set<number>>(new Set());
   const [translationLoading, setTranslationLoading] = useState(false);
 
@@ -180,13 +193,31 @@ export function useChats() {
     return unregister;
   }, [registerMessageHandler, handleWebSocketMessage]);
 
+  // 获取会话数量统计
+  const fetchConversationCounts = useCallback(async () => {
+    try {
+      const res = await api.post(CONVERSATION_COUNT_API_URL, {
+        inboxId: DEFAULT_INBOX_ID,
+      });
+      const meta = res.data?.meta || {};
+      setQueueCounts({
+        mineCount: meta.mine_count || 0,
+        unassignedCount: meta.unassigned_count || 0,
+      });
+    } catch (error) {
+      console.error('获取会话数量统计失败:', error);
+      setQueueCounts({ mineCount: 0, unassignedCount: 0 });
+    }
+  }, []);
+
   // 获取会话列表
-  const fetchChats = useCallback(async (label: 'verified' | 'unverified') => {
+  const fetchChats = useCallback(async (queueType: 'mine' | 'unassigned') => {
     setLoading(true);
     try {
+      const assigneeType = queueType === 'mine' ? 'me' : 'unassigned';
       const res = await api.post(CONVERSATION_API_URL, {
-        label,
-        assigneeType: 'me',
+        assigneeType,
+        status: 'all',
       });
       const payload = res.data?.data?.payload || [];
       // meta统计
@@ -205,6 +236,11 @@ export function useChats() {
           labels?: string[];
           status?: string;
           timestamp?: string | number;
+          assignee?: { id?: number };
+          additional_attributes?: {
+            roomName?: string;
+            [key: string]: any;
+          };
           meta?: {
             sender?: {
               name?: string;
@@ -214,17 +250,30 @@ export function useChats() {
         const lastMsg = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lastMessage = lastMsg as any;
+        const isAssigned = conv.assignee && conv.assignee.id;
+        const roomNumber = conv.additional_attributes?.roomName || conv.contact_inbox?.source_id || conv.uuid || '';
+        
+        // 根据状态确定显示文字
+        let statusText = '';
+        if (conv.status === 'open') {
+          statusText = '未解决';
+        } else if (conv.status === 'resolved') {
+          statusText = '已解决';
+        } else {
+          statusText = '已关闭';
+        }
+        
         return {
           id: conv.id,
-          roomNumber: conv.contact_inbox?.source_id || conv.uuid || '',
+          roomNumber,
           guestName: conv.meta?.sender?.name || '',
           lastMessage: lastMessage?.content || '',
           lastTime: conv.timestamp ? dayjs.unix(Number(conv.timestamp)).fromNow() : '',
-          verified: (conv.labels || []).includes('verified'),
+          verified: (conv.labels || []).includes('verified'), // 保留verified字段用于兼容
           language: '中文', // 后端暂未返回
           checkInDate: '', // 后端暂未返回
           checkOutDate: '', // 后端暂未返回
-          statusText: conv.status === 'open' ? (conv.labels?.includes('verified') ? '活跃' : '待验证') : '已关闭',
+          statusText,
           messages: (conv.messages || []).map((msg: unknown) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const m = msg as any;
@@ -237,9 +286,25 @@ export function useChats() {
           }),
         };
       });
+      
+      // 统计当前队列的活跃会话数量（status='open'）
+      const activeCount = payload.filter((item: any) => item.status === 'open').length;
+      setActiveChatsCount(activeCount);
+      
+      // 更新统计信息，将活跃会话数量设置为当前队列的统计
+      setStats(prevStats => ({
+        ...prevStats,
+        activeChats: activeCount,
+      }));
+      
       setChats(mappedChats);
     } catch {
       setChats([]);
+      setActiveChatsCount(0);
+      setStats(prevStats => ({
+        ...prevStats,
+        activeChats: 0,
+      }));
     } finally {
       setLoading(false);
     }
@@ -377,13 +442,14 @@ export function useChats() {
     fetchMessages(chat.id);
   }, [fetchMessages]);
 
-  // 队列切换时拉取
+  // 队列切换时拉取会话列表和数量统计
   useEffect(() => {
     fetchChats(activeQueue);
-  }, [activeQueue, fetchChats]);
+    fetchConversationCounts();
+  }, [activeQueue, fetchChats, fetchConversationCounts]);
 
-  const getQueueCount = (queueType: 'verified' | 'unverified') => {
-    return chats.filter(chat => chat.verified === (queueType === 'verified')).length;
+  const getQueueCount = (queueType: 'mine' | 'unassigned') => {
+    return queueType === 'mine' ? queueCounts.mineCount : queueCounts.unassignedCount;
   };
 
   // 本地模拟验证
@@ -407,19 +473,44 @@ export function useChats() {
     return updatedChat;
   };
 
-  const resolveChat = (chat: Chat) => {
-    const updatedChat = {
-      ...chat,
-      statusText: '已解决',
-    };
-    setChats(chats.map(c => c.id === chat.id ? updatedChat : c));
-    return updatedChat;
+  const resolveChat = async (chat: Chat) => {
+    try {
+      const res = await api.post(TOGGLE_STATUS_API_URL, {
+        conversationId: chat.id,
+        status: 'resolved'
+      });
+      
+      const payload = res.data?.payload;
+      if (payload?.success) {
+        // 成功时更新本地状态
+        const updatedChat = {
+          ...chat,
+          statusText: '已解决',
+        };
+        setChats(prevChats => prevChats.map(c => c.id === chat.id ? updatedChat : c));
+        
+        // 重新获取会话数量统计
+        fetchConversationCounts();
+        
+        // 显示成功提示
+        alert('会话已成功标记为解决！');
+        return updatedChat;
+      } else {
+        throw new Error('解决会话失败');
+      }
+    } catch (error) {
+      console.error('解决会话失败:', error);
+      alert('解决会话失败，请重试');
+      return chat;
+    }
   };
 
   // 翻译相关函数
 
   const toggleTranslate = useCallback((enabled: boolean) => {
     setTranslateEnabled(enabled);
+    // 保存到localStorage
+    localStorage.setItem('chat_translate_enabled', JSON.stringify(enabled));
 
     // 如果是关闭翻译，则立即清除已有的翻译结果
     if (!enabled) {
@@ -436,11 +527,13 @@ export function useChats() {
 
   const changeTranslateLanguage = useCallback((language: LanguageCode) => {
     setSelectedLanguage(language);
+    // 保存到localStorage
+    localStorage.setItem('chat_translate_language', language);
   }, []);
 
   // 这个 effect 是批量翻译的唯一触发源
   // 当开关被打开时，或者当语言/会话在开关为打开状态时发生变化，它就会运行
-  const prevLangRef = useRef<LanguageCode>();
+  const prevLangRef = useRef<LanguageCode | undefined>(undefined);
   useEffect(() => {
       const hasLanguageChanged = prevLangRef.current !== undefined && prevLangRef.current !== selectedLanguage;
 
@@ -485,6 +578,9 @@ export function useChats() {
     sendingMessage,
     isNewMessage,
     translationLoading,
+    fetchConversationCounts,
+    queueCounts,
+    activeChatsCount,
     // 翻译相关
     translateEnabled,
     selectedLanguage,

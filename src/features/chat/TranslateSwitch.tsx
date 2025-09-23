@@ -65,12 +65,12 @@ export default function TranslateSwitch({
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             disabled={disabled}
-            className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="text-lg">{selectedOption?.flag}</span>
-            <span>{selectedOption?.name}</span>
+            <span className="text-base">{selectedOption?.flag}</span>
+            <span className="text-xs">{selectedOption?.name}</span>
             <svg
-              className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -81,20 +81,20 @@ export default function TranslateSwitch({
 
           {/* 下拉菜单 */}
           {isDropdownOpen && (
-            <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
+            <div className="absolute right-0 z-10 mt-1 w-32 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
               <div className="py-1">
                 {LANGUAGE_OPTIONS.map((option) => (
                   <button
                     key={option.code}
                     onClick={() => handleLanguageSelect(option.code)}
-                    className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-3 hover:bg-gray-100 ${
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center space-x-2 hover:bg-gray-100 ${
                       selectedLanguage === option.code ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                     }`}
                   >
-                    <span className="text-lg">{option.flag}</span>
-                    <span>{option.name}</span>
+                    <span className="text-sm">{option.flag}</span>
+                    <span className="flex-1">{option.name}</span>
                     {selectedLanguage === option.code && (
-                      <svg className="w-4 h-4 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}

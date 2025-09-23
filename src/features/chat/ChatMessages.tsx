@@ -19,13 +19,32 @@ export default function ChatMessages({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // 自动滚动到底部 - 仅当有新消息时
+  // 初次加载时滚动到底部
   useEffect(() => {
-    if (isNewMessage) {
+    if (messages.length > 0 && isInitialLoad) {
+      // 使用setTimeout确保DOM已渲染
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 100);
+      setIsInitialLoad(false);
+    }
+  }, [messages, isInitialLoad]);
+
+  // 有新消息时滚动到底部
+  useEffect(() => {
+    if (isNewMessage && !isInitialLoad) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isNewMessage]);
+  }, [messages, isNewMessage, isInitialLoad]);
+
+  // 当消息被清空时（切换会话），重置初始加载状态
+  useEffect(() => {
+    if (messages.length === 0) {
+      setIsInitialLoad(true);
+    }
+  }, [messages.length]);
 
   // 分页加载时保持滚动位置
   useEffect(() => {

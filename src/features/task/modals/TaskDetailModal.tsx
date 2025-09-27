@@ -2,7 +2,18 @@ import { useEffect, useState } from 'react';
 import { Task } from '../../../types';
 import { taskApi, TaskDetail } from '../../../api';
 import { formatTimestamp } from '../../../utils/dateUtils';
-import { Modal, Spin, Button, Descriptions, Timeline, message } from 'antd';
+import { Modal, Spin, Button, Descriptions, Timeline, message, Tag, Card, Row, Col, Typography, Divider } from 'antd';
+import {
+  ClockCircleOutlined,
+  UserOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  InfoCircleOutlined,
+  HistoryOutlined,
+  FileTextOutlined
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
 
 interface TaskDetailModalProps {
   task: Task;
@@ -11,13 +22,14 @@ interface TaskDetailModalProps {
 
 export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   const [loading, setLoading] = useState(false);
+  const [remindLoading, setRemindLoading] = useState(false);
   const [taskDetail, setTaskDetail] = useState<TaskDetail | null>(null);
-  
+
   // 获取任务详情
   useEffect(() => {
     const fetchTaskDetail = async () => {
       setLoading(true);
-      
+
       try {
         const response = await taskApi.getTaskDetail(task.taskId);
         if (response.statusCode === 200) {
@@ -32,18 +44,48 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
         setLoading(false);
       }
     };
-    
+
     fetchTaskDetail();
   }, [task.taskId]);
 
+  const handleRemind = async () => {
+    setRemindLoading(true);
+    try {
+      const response = await taskApi.remindTask(task.taskId);
+      if (response.statusCode === 200) {
+        message.success('催办成功');
+      } else {
+        message.error(response.message || '催办失败');
+      }
+    } catch (err) {
+      console.error('催办任务出错:', err);
+      message.error('催办失败，请稍后重试');
+    } finally {
+      setRemindLoading(false);
+    }
+  };
+
+  const getPriorityTagColor = (priority: string) => {
+    switch (priority) {
+      case '高': return 'red';
+      case '紧急': return 'red';
+      case '中': return 'orange';
+      case '低': return 'blue';
+      default: return 'default';
+    }
+  }
+
   return (
     <Modal
-      title="工单详情"
+      title={<Title level={4}>工单详情</Title>}
       open={true}
       onCancel={onClose}
       footer={[
         <Button key="close" onClick={onClose}>
           关闭
+        </Button>,
+        <Button key="remind" type="primary" onClick={handleRemind} loading={remindLoading}>
+          催办
         </Button>
       ]}
       width={800}
@@ -55,44 +97,67 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
           <p className="mt-2 text-gray-600">加载中...</p>
         </div>
       ) : (taskDetail || task) ? (
-        <div className="space-y-6">
-          {/* 基本信息 */}
-          <Descriptions title="基本信息" bordered column={2}>
-            <Descriptions.Item label="房间号" span={1}>
-              {taskDetail?.roomId || task.roomId}
-            </Descriptions.Item>
-            <Descriptions.Item label="优先级" span={1}>
-              {taskDetail?.priorityDisplayName || task.priorityDisplayName}
-            </Descriptions.Item>
-            <Descriptions.Item label="标题" span={2}>
-              {taskDetail?.title || task.title}
-            </Descriptions.Item>
-            <Descriptions.Item label="部门" span={1}>
-              {taskDetail?.deptName || task.deptName}
-            </Descriptions.Item>
-            <Descriptions.Item label="当前状态" span={1}>
-              {taskDetail?.statusDisplayName || task.statusDisplayName}
-            </Descriptions.Item>
-            <Descriptions.Item label="创建时间" span={1}>
-              {formatTimestamp(taskDetail?.createdAt || task.createdAt)}
-            </Descriptions.Item>
-            <Descriptions.Item label="创建人" span={1}>
-              {taskDetail?.creator || '未知'}
-            </Descriptions.Item>
-            <Descriptions.Item label="执行人" span={1}>
-              {taskDetail?.executor || '暂无'}
-            </Descriptions.Item>
-            <Descriptions.Item label="描述" span={2}>
-              <div className="whitespace-pre-line">
-                {taskDetail?.description || task.description}
-              </div>
-            </Descriptions.Item>
-          </Descriptions>
-          
-          {/* 操作记录 */}
+        <div className="space-y-6 p-4 bg-gray-50 rounded-lg">
+          <Card bordered={false}>
+            <Title level={5}>{taskDetail?.title || task.title}</Title>
+            <Row gutter={[16, 16]} className="mt-4">
+              <Col span={12}>
+                <InfoCircleOutlined className="mr-2" />
+                <Text strong>房间号: </Text>
+                <Text>{taskDetail?.roomId || task.roomId}</Text>
+              </Col>
+              <Col span={12}>
+                <CheckCircleOutlined className="mr-2" />
+                <Text strong>当前状态: </Text>
+                <Tag color="cyan">{taskDetail?.statusDisplayName || task.statusDisplayName}</Tag>
+              </Col>
+              <Col span={12}>
+                <ClockCircleOutlined className="mr-2" />
+                <Text strong>优先级: </Text>
+                <Tag color={getPriorityTagColor(taskDetail?.priorityDisplayName || task.priorityDisplayName || '')}>
+                  {taskDetail?.priorityDisplayName || task.priorityDisplayName}
+                </Tag>
+              </Col>
+              <Col span={12}>
+                <TeamOutlined className="mr-2" />
+                <Text strong>部门: </Text>
+                <Text>{taskDetail?.deptName || task.deptName}</Text>
+              </Col>
+              <Col span={12}>
+                <UserOutlined className="mr-2" />
+                <Text strong>创建人: </Text>
+                <Text>{taskDetail?.creator || '未知'}</Text>
+              </Col>
+              <Col span={12}>
+                <UserOutlined className="mr-2" />
+                <Text strong>执行人: </Text>
+                <Text>{taskDetail?.executor || '暂无'}</Text>
+              </Col>
+               <Col span={12}>
+                <ClockCircleOutlined className="mr-2" />
+                <Text strong>创建时间: </Text>
+                <Text>{formatTimestamp(taskDetail?.createdAt || task.createdAt)}</Text>
+              </Col>
+              {taskDetail?.deadlineTime && (
+                <Col span={12}>
+                  <ClockCircleOutlined className="mr-2" style={{ color: 'red' }}/>
+                  <Text strong style={{ color: 'red' }}>截止时间: </Text>
+                  <Text style={{ color: 'red' }}>{formatTimestamp(taskDetail.deadlineTime)}</Text>
+                </Col>
+              )}
+            </Row>
+            
+            <Divider />
+
+            <Title level={5}><FileTextOutlined className="mr-2" />详细描述</Title>
+            <div className="whitespace-pre-line text-gray-600 bg-gray-100 p-3 rounded-md">
+              {taskDetail?.description || task.description}
+            </div>
+          </Card>
+
           {taskDetail && taskDetail.operateRecords && taskDetail.operateRecords.length > 0 && (
-            <div>
-              <h4 className="font-medium text-gray-700 mb-4">操作记录</h4>
+            <Card bordered={false}>
+               <Title level={5}><HistoryOutlined className="mr-2" />操作记录</Title>
               <Timeline>
                 {taskDetail.operateRecords.map(record => (
                   <Timeline.Item key={record.id}>
@@ -110,7 +175,7 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                   </Timeline.Item>
                 ))}
               </Timeline>
-            </div>
+            </Card>
           )}
         </div>
       ) : (

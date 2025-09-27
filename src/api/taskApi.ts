@@ -114,5 +114,14 @@ export const taskApi = {
   sendReminder: async (id: number) => {
     const response = await api.post<ApiResponse<boolean>>(`/task/reminder/${id}`);
     return response.data;
+  },
+
+  /**
+   * 催办任务
+   * @param taskId 任务ID
+   */
+  remindTask: async (taskId: number) => {
+    const response = await api.post<ApiResponse<boolean>>('/task/reminder', { taskId });
+    return response.data;
   }
 }; 

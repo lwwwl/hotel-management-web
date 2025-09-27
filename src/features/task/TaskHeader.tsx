@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { deptApi, DeptSelectListItem } from '../../api';
+import { Select } from 'antd';
 
 interface TaskHeaderProps {
   filters: {
@@ -63,30 +64,34 @@ export default function TaskHeader({
           <div className="flex items-center space-x-4">
             {/* 筛选器 */}
             <div className="flex items-center space-x-2">
-              <select 
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                value={filters.department}
-                onChange={(e) => updateFilter('department', e.target.value)}
-                disabled={loading}
+              <Select
+                style={{ width: 180 }}
+                placeholder="所有部门"
+                value={filters.department || undefined}
+                onChange={(value) => updateFilter('department', value)}
+                loading={loading}
+                allowClear
               >
                 {departments.map(dept => (
-                  <option key={dept.deptId} value={dept.deptId}>
+                  <Select.Option key={dept.deptId} value={String(dept.deptId)}>
                     {dept.deptName}
-                  </option>
+                  </Select.Option>
                 ))}
-              </select>
+              </Select>
               
-              <select 
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                value={filters.priority}
-                onChange={(e) => updateFilter('priority', e.target.value)}
+              <Select
+                style={{ width: 180 }}
+                placeholder="所有优先级"
+                value={filters.priority || undefined}
+                onChange={(value) => updateFilter('priority', value)}
+                allowClear
               >
-                <option value="">所有优先级</option>
-                <option value="low">低</option>
-                <option value="medium">中</option>
-                <option value="high">高</option>
-                <option value="urgent">紧急</option>
-              </select>
+                <Select.Option value="">所有优先级</Select.Option>
+                <Select.Option value="low">低</Select.Option>
+                <Select.Option value="medium">中</Select.Option>
+                <Select.Option value="high">高</Select.Option>
+                <Select.Option value="urgent">紧急</Select.Option>
+              </Select>
             </div>
             
             {/* 操作按钮 */}

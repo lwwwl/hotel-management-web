@@ -94,6 +94,7 @@ export interface TaskDetail {
   status: string;
   statusDisplayName: string; // 状态显示名称
   createdAt: number; // 改为毫秒时间戳
+  deadlineTime?: number; // 截止时间，毫秒时间戳
   creator: string;
   executor?: string;
   operateRecords: TaskOperateRecord[];

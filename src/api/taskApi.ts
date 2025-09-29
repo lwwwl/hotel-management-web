@@ -8,7 +8,11 @@ import {
   TaskChangeStatusRequest,
   TaskListRequest,
   TaskListColumnBO,
-  TaskDetailRequest
+  TaskDetailRequest,
+  TaskDetailResponse,
+  TaskListResponse,
+  TaskStatus,
+  UpdateTaskRequest,
 } from './types';
 
 export const taskApi = {
@@ -34,11 +38,10 @@ export const taskApi = {
 
   /**
    * 获取任务详情
-   * @param taskId 任务ID
+   * @param params 包含任务ID的对象
    */
-  getTaskDetail: async (taskId: number) => {
-    const request: TaskDetailRequest = { taskId };
-    const response = await api.post<ApiResponse<TaskDetail>>('/task/detail', request);
+  getTaskDetail: async (params: { taskId: number }) => {
+    const response = await api.post<ApiResponse<TaskDetail>>('/task/detail', params);
     return response.data;
   },
 
@@ -122,6 +125,15 @@ export const taskApi = {
    */
   remindTask: async (taskId: number) => {
     const response = await api.post<ApiResponse<boolean>>('/task/reminder', { taskId });
+    return response.data;
+  },
+
+  /**
+   * 获取任务操作记录
+   * @param params 包含任务ID的对象
+   */
+  getTaskOperateRecord: async (params: { taskId: number }) => {
+    const response = await api.post<ApiResponse<any[]>>('/task/operate-record/list', params);
     return response.data;
   }
 }; 

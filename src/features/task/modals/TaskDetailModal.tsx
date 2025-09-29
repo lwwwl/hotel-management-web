@@ -12,6 +12,7 @@ import {
   HistoryOutlined,
   FileTextOutlined
 } from '@ant-design/icons';
+import { TaskOperateRecord } from '../../../api/types';
 
 const { Title, Text } = Typography;
 
@@ -24,14 +25,15 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
   const [loading, setLoading] = useState(false);
   const [remindLoading, setRemindLoading] = useState(false);
   const [taskDetail, setTaskDetail] = useState<TaskDetail | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [operationLogs, setOperationLogs] = useState<TaskOperateRecord[]>([]);
 
-  // 获取任务详情
+  // 获取任务详情和操作日志
   useEffect(() => {
     const fetchTaskDetail = async () => {
       setLoading(true);
-
       try {
-        const response = await taskApi.getTaskDetail(task.taskId);
+        const response = await taskApi.getTaskDetail({ taskId: task.taskId });
         if (response.statusCode === 200) {
           setTaskDetail(response.data);
         } else {
@@ -45,7 +47,25 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
       }
     };
 
+    const fetchOperationLogs = async () => {
+      setLogsLoading(true);
+      try {
+        const response = await taskApi.getTaskOperateRecord({ taskId: task.taskId });
+        // @ts-ignore
+        if (response.data) {
+          // @ts-ignore
+          setOperationLogs(response.data);
+        }
+      } catch (err) {
+        console.error('获取操作日志出错:', err);
+        message.error('获取操作日志失败');
+      } finally {
+        setLogsLoading(false);
+      }
+    };
+
     fetchTaskDetail();
+    fetchOperationLogs();
   }, [task.taskId]);
 
   const handleRemind = async () => {
@@ -90,6 +110,7 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
       ]}
       width={800}
       destroyOnClose
+      bodyStyle={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
     >
       {loading ? (
         <div className="py-10 text-center">
@@ -155,28 +176,32 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
             </div>
           </Card>
 
-          {taskDetail && taskDetail.operateRecords && taskDetail.operateRecords.length > 0 && (
-            <Card bordered={false}>
-               <Title level={5}><HistoryOutlined className="mr-2" />操作记录</Title>
+          <Card bordered={false}>
+            <Title level={5}><HistoryOutlined className="mr-2" />操作日志</Title>
+            {logsLoading ? (
+              <div className="text-center py-4"><Spin /></div>
+            ) : operationLogs.length > 0 ? (
               <Timeline>
-                {taskDetail.operateRecords.map(record => (
+                {operationLogs.map(record => (
                   <Timeline.Item key={record.id}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium">{record.operateUser}</p>
+                        <p className="font-medium">{record.operatorUserDisplayName}</p>
                         <p className="text-sm text-gray-600">
-                          {record.operateType}: {record.operateContent}
+                          {record.operateContent}
                         </p>
                       </div>
                       <span className="text-sm text-gray-500">
-                        {formatTimestamp(record.operateTime)}
+                        {formatTimestamp(record.createTime)}
                       </span>
                     </div>
                   </Timeline.Item>
                 ))}
               </Timeline>
-            </Card>
-          )}
+            ) : (
+              <div className="text-center py-4 text-gray-500">暂无操作日志</div>
+            )}
+          </Card>
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">

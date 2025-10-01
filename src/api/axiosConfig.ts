@@ -1,6 +1,7 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-const API_BASE_URL = 'http://111.223.37.162:7788';
+// const API_BASE_URL = 'http://111.223.37.162:7788';
+const API_BASE_URL = 'https://kefu.5ok.co/api/v1';
 
 // http://127.0.0.1:8080
 

@@ -10,7 +10,7 @@ function App() {
   return (
     <UserProvider>
       <WebSocketProvider>
-        <Router>
+        <Router basename="/employee">
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Navigate to="/chat" replace />} />

@@ -2,6 +2,7 @@
   "name": "hotel-management-web",
   "private": true,
   "version": "0.0.0",
+  "homepage": "/employee/",
   "type": "module",
   "scripts": {
     "dev": "vite",

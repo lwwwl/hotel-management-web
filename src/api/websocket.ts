@@ -2,21 +2,22 @@ import axios from 'axios';
 import { WebSocketConnectionResponse } from '../types';
 
 // WebSocket API配置
-const WEBSOCKET_API_BASE_URL = import.meta.env.VITE_WEBSOCKET_API_URL || 'http://111.223.37.162:7766';
+// const WEBSOCKET_API_BASE_URL = import.meta.env.VITE_WEBSOCKET_API_URL || 'http://111.223.37.162:7766';
+const WEBSOCKET_API_BASE_URL = 'https://kefu.5ok.co';
 
-// 根据环境重写后端返回的 wsUrl 的主机与协议，避免服务端默认返回 localhost 导致浏览器连不上
-function rewriteWsUrlHost(wsUrl: string): string {
-  try {
-    const urlFromServer = new URL(wsUrl);
-    const apiBase = new URL(WEBSOCKET_API_BASE_URL);
-    // 协议映射：http -> ws, https -> wss
-    urlFromServer.protocol = apiBase.protocol === 'https:' ? 'wss:' : 'ws:';
-    urlFromServer.host = apiBase.host;
-    return urlFromServer.toString();
-  } catch {
-    return wsUrl;
-  }
-}
+// // 根据环境重写后端返回的 wsUrl 的主机与协议，避免服务端默认返回 localhost 导致浏览器连不上
+// function rewriteWsUrlHost(wsUrl: string): string {
+//   try {
+//     const urlFromServer = new URL(wsUrl);
+//     const apiBase = new URL(WEBSOCKET_API_BASE_URL);
+//     // 协议映射：http -> ws, https -> wss
+//     urlFromServer.protocol = apiBase.protocol === 'https:' ? 'wss:' : 'ws:';
+//     urlFromServer.host = apiBase.host;
+//     return urlFromServer.toString();
+//   } catch {
+//     return wsUrl;
+//   }
+// }
 
 // 获取客服端WebSocket连接信息
 export const getAgentWebSocketConnection = async (userId: string): Promise<WebSocketConnectionResponse> => {
@@ -30,8 +31,6 @@ export const getAgentWebSocketConnection = async (userId: string): Promise<WebSo
       }
     );
     const data = response.data as WebSocketConnectionResponse;
-    // 重写 wsUrl 的主机与协议
-    data.wsUrl = rewriteWsUrlHost(data.wsUrl);
     return data;
   } catch (error) {
     console.error('获取WebSocket连接信息失败:', error);

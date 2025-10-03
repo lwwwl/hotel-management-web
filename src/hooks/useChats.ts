@@ -15,9 +15,30 @@ const MESSAGE_API_URL = '/chat-user/message-list';
 const SEND_MESSAGE_API_URL = '/chat-user/message-create';
 const CONVERSATION_COUNT_API_URL = '/chat-user/conversation/count';
 const TOGGLE_STATUS_API_URL = '/chat-user/conversation/toggle-status';
+const ASSIGN_CONVERSATION_API_URL = '/chat-user/conversation/assign';
 
 // 配置常量
 const DEFAULT_INBOX_ID = 2; // 默认的收件箱ID，后续可根据实际需要调整
+
+interface ConversationPayload {
+  id: number;
+  messages: unknown[];
+  contact_inbox?: { source_id?: string };
+  uuid?: string;
+  labels?: string[];
+  status?: string;
+  timestamp?: string | number;
+  assignee?: { id?: number };
+  additional_attributes?: {
+    roomName?: string;
+    [key: string]: unknown;
+  };
+  meta?: {
+    sender?: {
+      name?: string;
+    };
+  };
+}
 
 export function useChats() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -42,7 +63,6 @@ export function useChats() {
     const saved = localStorage.getItem('chat_translate_language');
     return (saved as LanguageCode) || 'zh_CN';
   });
-  const [translatingMessages, setTranslatingMessages] = useState<Set<number>>(new Set());
   const [translationLoading, setTranslationLoading] = useState(false);
 
   // 获取WebSocket上下文，仅用于消息注册
@@ -68,9 +88,6 @@ export function useChats() {
           : msg
       )
     );
-
-    // 添加到翻译中集合
-    setTranslatingMessages(prev => new Set([...prev, ...messageIds]));
 
     try {
       const translations = await TranslateService.translateMessages(
@@ -105,13 +122,6 @@ export function useChats() {
             : msg
         )
       );
-    } finally {
-      // 从翻译中集合移除
-      setTranslatingMessages(prev => {
-        const newSet = new Set(prev);
-        messageIds.forEach(id => newSet.delete(id));
-        return newSet;
-      });
     }
     setTranslationLoading(false);
   }, [currentConversationId, translateEnabled, messages]);
@@ -227,31 +237,12 @@ export function useChats() {
         resolvedToday: meta.assigned_count || 0,
       });
       // 映射为Chat类型
-      const mappedChats: Chat[] = payload.map((item: unknown) => {
-        const conv = item as {
-          id: number;
-          messages: unknown[];
-          contact_inbox?: { source_id?: string };
-          uuid?: string;
-          labels?: string[];
-          status?: string;
-          timestamp?: string | number;
-          assignee?: { id?: number };
-          additional_attributes?: {
-            roomName?: string;
-            [key: string]: any;
-          };
-          meta?: {
-            sender?: {
-              name?: string;
-            };
-          };
-        };
+      const mappedChats: Chat[] = payload.map((item: ConversationPayload) => {
+        const conv = item;
         const lastMsg = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lastMessage = lastMsg as any;
-        const isAssigned = conv.assignee && conv.assignee.id;
-        const roomNumber = conv.additional_attributes?.roomName || conv.contact_inbox?.source_id || conv.uuid || '';
+        const roomNumber = conv.additional_attributes?.roomName || '';
         
         // 根据状态确定显示文字
         let statusText = '';
@@ -288,7 +279,7 @@ export function useChats() {
       });
       
       // 统计当前队列的活跃会话数量（status='open'）
-      const activeCount = payload.filter((item: any) => item.status === 'open').length;
+      const activeCount = payload.filter((item: ConversationPayload) => item.status === 'open').length;
       setActiveChatsCount(activeCount);
       
       // 更新统计信息，将活跃会话数量设置为当前队列的统计
@@ -442,6 +433,23 @@ export function useChats() {
     fetchMessages(chat.id);
   }, [fetchMessages]);
 
+  // 分配会话给自己
+  const assignConversation = useCallback(async (chat: Chat) => {
+    try {
+      await api.post(ASSIGN_CONVERSATION_API_URL, {
+        conversation_id: chat.id,
+        // 根据后端口头，agent_id可以不传，会自动分配给当前用户
+      });
+      // 刷新列表
+      fetchChats('unassigned');
+      fetchConversationCounts();
+      alert('接受处理成功！');
+    } catch (error) {
+      console.error('分配会话失败:', error);
+      alert('接受处理失败，请重试');
+    }
+  }, [fetchChats, fetchConversationCounts]);
+
   // 队列切换时拉取会话列表和数量统计
   useEffect(() => {
     fetchChats(activeQueue);
@@ -481,20 +489,19 @@ export function useChats() {
       });
       
       const payload = res.data?.payload;
-      if (payload?.success) {
-        // 成功时更新本地状态
-        const updatedChat = {
-          ...chat,
-          statusText: '已解决',
-        };
-        setChats(prevChats => prevChats.map(c => c.id === chat.id ? updatedChat : c));
-        
-        // 重新获取会话数量统计
+      if (payload) {
+        // 成功时刷新列表
+        fetchChats(activeQueue);
         fetchConversationCounts();
         
         // 显示成功提示
         alert('会话已成功标记为解决！');
-        return updatedChat;
+
+        // 返回一个模拟的更新后chat对象
+        return {
+          ...chat,
+          statusText: '已解决',
+        };
       } else {
         throw new Error('解决会话失败');
       }
@@ -567,6 +574,7 @@ export function useChats() {
     verifyChat,
     rejectChat,
     resolveChat,
+    assignConversation,
     loading,
     activeQueue,
     setActiveQueue,

@@ -2,8 +2,8 @@ import axios from 'axios';
 import { WebSocketConnectionResponse } from '../types';
 
 // WebSocket API配置
-// const WEBSOCKET_API_BASE_URL = import.meta.env.VITE_WEBSOCKET_API_URL || 'http://111.223.37.162:7766';
-const WEBSOCKET_API_BASE_URL = 'https://kefu.5ok.co';
+const WEBSOCKET_API_BASE_URL = 'http://111.223.37.162:7766';
+// const WEBSOCKET_API_BASE_URL = 'https://kefu.5ok.co';
 
 // // 根据环境重写后端返回的 wsUrl 的主机与协议，避免服务端默认返回 localhost 导致浏览器连不上
 // function rewriteWsUrlHost(wsUrl: string): string {

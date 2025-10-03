@@ -13,17 +13,17 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { chats, stats, getQueueCount, verifyChat, activeQueue, setActiveQueue, selectChat, queueCounts } = useChats();
+  const { 
+    chats, 
+    stats, 
+    getQueueCount, 
+    activeQueue, 
+    setActiveQueue, 
+    selectChat,
+    assignConversation,
+    resolveChat
+  } = useChats();
 
-  const handleQuickVerify = (chat: Chat) => {
-    if (!chat || chat.verified) return;
-    
-    if (window.confirm(`确定要验证 ${chat.roomNumber} 房间的 ${chat.guestName} 吗？`)) {
-      const updatedChat = verifyChat(chat);
-      alert(`${updatedChat.roomNumber} 房间客人验证成功！`);
-    }
-  };
-  
   const handleSelectChat = (chat: Chat) => {
     onSelectChat(chat);
     selectChat(chat);
@@ -72,17 +72,21 @@ export default function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarP
         unassignedCount={getQueueCount('unassigned')}
       />
 
-      {/* 统计信息 */}
-      <ChatStats stats={stats} />
+      {/* 统计信息和会话列表容器 */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* 统计信息 */}
+        <ChatStats stats={stats} />
 
-      {/* 会话列表 */}
-      <ChatList
-        chats={filteredChats}
-        activeQueue={activeQueue}
-        selectedChat={selectedChat}
-        onSelectChat={handleSelectChat}
-        onQuickVerify={handleQuickVerify}
-      />
+        {/* 会话列表 */}
+        <ChatList
+          chats={filteredChats}
+          activeQueue={activeQueue}
+          selectedChat={selectedChat}
+          onSelectChat={handleSelectChat}
+          onAssignConversation={assignConversation}
+          onResolveChat={resolveChat}
+        />
+      </div>
     </div>
   );
 } 

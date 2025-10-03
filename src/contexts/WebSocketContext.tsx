@@ -5,7 +5,7 @@ import type { UseWebSocketReturn } from '../hooks/useWebSocket';
 import type { NotificationMessage } from '../types';
 import { useUserContext } from './UserContext';
 
-interface WebSocketContextType extends UseWebSocketReturn {
+export interface WebSocketContextType extends UseWebSocketReturn {
   registerMessageHandler: (handler: (notification: NotificationMessage) => void) => () => void;
 }
 
@@ -13,11 +13,12 @@ interface WebSocketProviderProps {
   children: ReactNode;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+export const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const messageHandlersRef = useRef<Set<(notification: NotificationMessage) => void>>(new Set());
   const { userId } = useUserContext();
+  const isConnectingRef = useRef(false);
 
   // 注册消息处理器
   const registerMessageHandler = useCallback((handler: (notification: NotificationMessage) => void) => {
@@ -48,11 +49,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   // 在Provider层自动根据userId建立/维护连接
   useEffect(() => {
     const effectiveUserId = userId || localStorage.getItem('userId') || '1';
-    if (effectiveUserId && !webSocketHook.isConnected && !webSocketHook.isConnecting) {
-      webSocketHook.connect(effectiveUserId);
+    if (effectiveUserId && !webSocketHook.isConnected && !webSocketHook.isConnecting && !isConnectingRef.current) {
+      isConnectingRef.current = true;
+      webSocketHook.connect(effectiveUserId).finally(() => {
+        isConnectingRef.current = false;
+      });
     }
-    // 当userId变化且已连接到旧用户时，执行重连
-  }, [userId, webSocketHook.isConnected, webSocketHook.isConnecting, webSocketHook.connect]);
+  }, [userId, webSocketHook.isConnected, webSocketHook.isConnecting]);
   
   return (
     <WebSocketContext.Provider value={{ 

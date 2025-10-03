@@ -5,7 +5,8 @@ interface ChatListProps {
   activeQueue: 'mine' | 'unassigned';
   selectedChat: Chat | null;
   onSelectChat: (chat: Chat) => void;
-  onQuickVerify: (chat: Chat) => void;
+  onAssignConversation: (chat: Chat) => void;
+  onResolveChat: (chat: Chat) => void;
 }
 
 export default function ChatList({ 
@@ -13,10 +14,11 @@ export default function ChatList({
   activeQueue, 
   selectedChat, 
   onSelectChat,
-  onQuickVerify
+  onAssignConversation,
+  onResolveChat
 }: ChatListProps) {
   return (
-    <div className="flex-1 overflow-y-auto chat-scroll">
+    <div className="flex-1 overflow-y-auto">
       {/* 我处理的会话列表 */}
       {activeQueue === 'mine' && (
         <div>
@@ -32,18 +34,31 @@ export default function ChatList({
               <div className="flex justify-between items-start">
                 <div>
                   <div className="font-medium">
-                    {chat.roomNumber} - {chat.guestName}
+                    {chat.roomNumber ? `${chat.roomNumber} - ` : ''}{chat.guestName}
                   </div>
                   <div className="text-sm text-gray-600">{chat.lastMessage}</div>
                   <div className="text-xs text-gray-400">{chat.lastTime}</div>
                 </div>
-                <span className={`px-2 py-1 text-xs rounded whitespace-nowrap min-w-[50px] text-center ${
-                  chat.statusText === '已解决' 
-                    ? 'bg-green-100 text-green-800' 
-                    : chat.statusText === '未解决'
-                    ? 'bg-orange-100 text-orange-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>{chat.statusText}</span>
+                <div className="flex flex-col items-end space-y-1">
+                  <span className={`px-2 py-1 text-xs rounded whitespace-nowrap min-w-[50px] text-center ${
+                    chat.statusText === '已解决' 
+                      ? 'bg-green-100 text-green-800' 
+                      : chat.statusText === '未解决'
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>{chat.statusText}</span>
+                  {chat.statusText === '未解决' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onResolveChat(chat);
+                      }}
+                      className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      解决
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -67,7 +82,7 @@ export default function ChatList({
                   onClick={() => onSelectChat(chat)}
                 >
                   <div className="font-medium">
-                    {chat.roomNumber} - {chat.guestName}
+                    {chat.roomNumber ? `${chat.roomNumber} - ` : ''}{chat.guestName}
                   </div>
                   <div className="text-sm text-gray-600">{chat.lastMessage}</div>
                   <div className="text-xs text-gray-400">{chat.lastTime}</div>
@@ -81,7 +96,7 @@ export default function ChatList({
                       : 'bg-gray-100 text-gray-800'
                   }`}>{chat.statusText}</span>
                   <button 
-                    onClick={() => onQuickVerify(chat)}
+                    onClick={() => onAssignConversation(chat)}
                     className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     接受处理
